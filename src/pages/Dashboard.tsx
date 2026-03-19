@@ -2,41 +2,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useCity } from "@/hooks/useCity";
 import {
+  Upload, Sparkles, ArrowRight, ArrowUpRight,
   Briefcase, BookmarkCheck, TrendingUp, Target,
-  ArrowRight, Upload, Sparkles, Clock, ArrowUpRight,
-  Zap, ChevronRight,
+  ChevronRight, Clock, Zap, FileText, MessageSquare,
+  Map, Mic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, BarChart, Bar, ResponsiveContainer } from "recharts";
 
-const matchData = [
-  { week: "W1", matches: 4 }, { week: "W2", matches: 8 },
-  { week: "W3", matches: 6 }, { week: "W4", matches: 14 },
-  { week: "W5", matches: 11 },{ week: "W6", matches: 18 },
-  { week: "W7", matches: 22 },
-];
-
-const skillData = [
-  { skill: "React", demand: 94, color: "#22c55e" },
-  { skill: "TypeScript", demand: 87, color: "#22c55e" },
-  { skill: "Node.js", demand: 79, color: "#22c55e" },
-  { skill: "Python", demand: 73, color: "#f59e0b" },
-  { skill: "AWS", demand: 66, color: "#f59e0b" },
-];
-
-const recentJobs = [
-  { title: "Senior Frontend Engineer", company: "Swiggy", match: 94, type: "Remote", posted: "2h", logo: "S" },
-  { title: "Full Stack Developer",     company: "Razorpay", match: 87, type: "Hybrid", posted: "5h", logo: "R" },
-  { title: "React Developer",          company: "PhonePe", match: 82, type: "On-site", posted: "1d", logo: "P" },
-  { title: "Software Engineer II",     company: "CRED",    match: 78, type: "Remote",  posted: "1d", logo: "C" },
-];
-
-const chartConfig = { matches: { label: "Matches", color: "#22c55e" } };
-
-const Dashboard = () => {
+// ── Empty state hero ─────────────────────────────────────────────
+const EmptyDashboard = () => {
   const { user } = useAuth();
   const { city } = useCity();
   const navigate = useNavigate();
@@ -44,167 +19,92 @@ const Dashboard = () => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const stats = [
-    { label: "Total Matches",  value: "61",  sub: "+18 this week",  accent: "stat-accent-green", icon: Target,       trend: "+42%" },
-    { label: "Saved Jobs",     value: "12",  sub: "3 new added",    accent: "stat-accent-blue",  icon: BookmarkCheck, trend: "+3" },
-    { label: "Profile Score",  value: "78%", sub: "+5% this month", accent: "stat-accent-amber", icon: TrendingUp,    trend: "↑" },
-    { label: "Applications",   value: "5",   sub: "2 in review",    accent: "stat-accent-red",   icon: Briefcase,     trend: "Active" },
+  const quickActions = [
+    { icon: Upload,       label: "Analyze Resume",   sub: "Get AI job matches",           href: "/match",           color: "#22c55e", bg: "#f0fdf4" },
+    { icon: Briefcase,    label: "Browse Jobs",       sub: `Live jobs in ${city.name}`,    href: "/jobs",            color: "#3b82f6", bg: "#eff6ff" },
+    { icon: Mic,          label: "Interview Prep",    sub: "Practice mock interviews",     href: "/interview",       color: "#8b5cf6", bg: "#f5f3ff" },
+    { icon: TrendingUp,   label: "Skill Gap",         sub: "Find your missing skills",     href: "/skillgap",        color: "#f59e0b", bg: "#fffbeb" },
+    { icon: Map,          label: "Career Roadmap",    sub: "Plan your path forward",       href: "/career-roadmap",  color: "#06b6d4", bg: "#ecfeff" },
+    { icon: MessageSquare,label: "AI Advisor",        sub: "Chat about your career",       href: "/advisor",         color: "#ec4899", bg: "#fdf2f8" },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-5 sm:px-7 py-7 space-y-6">
+    <div className="max-w-3xl mx-auto px-5 py-12 space-y-10">
 
-      {/* Greeting header — Finexy style */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 fade-up">
-        <div>
-          <p className="text-sm text-muted-foreground mb-0.5">{greeting},</p>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {firstName} <span className="text-muted-foreground/40">👋</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Stay on top of your job search · <span className="text-emerald-600 font-medium">{city.name}</span>
-          </p>
+      {/* Greeting */}
+      <div className="text-center fade-up">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/25">
+          <Sparkles className="h-8 w-8 text-white" />
         </div>
-        <Button onClick={() => navigate("/match")}
-          className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white self-start sm:self-auto shadow-sm">
-          <Upload className="h-4 w-4" />Analyze Resume
-        </Button>
+        <h1 className="text-3xl font-bold text-black tracking-tight mb-2">
+          {greeting}, {firstName}! 👋
+        </h1>
+        <p className="text-black/50 text-base max-w-sm mx-auto leading-relaxed">
+          Welcome to RoleMatch. Start by uploading your resume to get AI-powered job matches in <span className="text-emerald-600 font-medium">{city.name}</span>.
+        </p>
       </div>
 
-      {/* ── Stats row — bento style ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(({ label, value, sub, accent, icon: Icon, trend }, i) => (
-          <div key={label}
-            className={`card-premium p-4 ${accent} fade-up fade-up-${i + 1}`}>
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">{label}</p>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
-                {trend}
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-foreground tracking-tight mb-1">{value}</p>
-            <p className="text-xs text-muted-foreground">{sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Main bento grid ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Match activity chart — 2 cols */}
-        <div className="lg:col-span-2 card-premium p-5 fade-up fade-up-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-semibold text-sm text-foreground">Match Activity</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Job matches over 7 weeks</p>
-            </div>
-            <span className="badge-green">
-              <Zap className="h-3 w-3" />+18 this week
-            </span>
-          </div>
-          <ChartContainer config={chartConfig} className="h-44">
-            <AreaChart data={matchData}>
-              <defs>
-                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Area type="monotone" dataKey="matches" stroke="#22c55e" fill="url(#g1)" strokeWidth={2.5} dot={false} />
-            </AreaChart>
-          </ChartContainer>
-        </div>
-
-        {/* Skill demand — 1 col */}
-        <div className="card-premium p-5 fade-up fade-up-3">
-          <div className="mb-4">
-            <p className="font-semibold text-sm text-foreground">Skills in Demand</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{city.name} market</p>
-          </div>
-          <div className="space-y-3">
-            {skillData.map(({ skill, demand, color }) => (
-              <div key={skill}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-medium text-foreground">{skill}</span>
-                  <span className="text-muted-foreground">{demand}%</span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${demand}%`, background: color }} />
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Primary CTA */}
+      <div className="fade-up fade-up-1">
+        <div className="card-premium p-6 text-center"
+          style={{ background: "linear-gradient(135deg, #0a0a0a 0%, #0f2040 100%)", border: "none" }}>
+          <p className="font-semibold text-white mb-1">Start with your resume</p>
+          <p className="text-white/40 text-sm mb-4">Upload PDF, DOC, or TXT — Gemini AI does the rest</p>
+          <Button
+            onClick={() => navigate("/match")}
+            className="gap-2 bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-500/30 h-11 px-8"
+          >
+            <Upload className="h-4 w-4" />
+            Analyze My Resume
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      {/* ── Recent matches ── */}
-      <div className="card-premium fade-up fade-up-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b"
-          style={{ borderColor: "hsl(var(--border))" }}>
-          <div>
-            <p className="font-semibold text-sm text-foreground">Recent Matches</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Top jobs for your profile in {city.name}</p>
-          </div>
-          <button onClick={() => navigate("/jobs")}
-            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition-colors">
-            View all <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        <div className="divide-y" style={{ borderColor: "hsl(var(--border))" }}>
-          {recentJobs.map((job) => (
-            <div key={job.title}
-              className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer group"
-              onClick={() => navigate("/jobs")}>
-              {/* Company logo */}
-              <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0 group-hover:bg-emerald-50 group-hover:text-emerald-700 transition-colors">
-                {job.logo}
+      {/* Quick actions grid */}
+      <div className="fade-up fade-up-2">
+        <p className="text-xs font-semibold text-black/30 uppercase tracking-widest mb-3">Or explore features</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {quickActions.map(({ icon: Icon, label, sub, href, color, bg }) => (
+            <button key={href} onClick={() => navigate(href)}
+              className="card-premium p-4 text-left group hover:-translate-y-0.5 active:translate-y-0 transition-all">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
+                style={{ background: bg }}>
+                <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18, color }} />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{job.title}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-emerald-600 font-medium">{job.company}</span>
-                  <span className="text-xs text-muted-foreground">{job.type}</span>
-                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                    <Clock className="h-2.5 w-2.5" />{job.posted} ago
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  {job.match}%
-                </span>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </div>
+              <p className="font-semibold text-sm text-black">{label}</p>
+              <p className="text-xs text-black/40 mt-0.5 leading-tight">{sub}</p>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* ── CTA banner ── */}
-      <div className="card-premium overflow-hidden fade-up fade-up-5">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5"
-          style={{ background: "linear-gradient(135deg, #0a0a0a 0%, #0f2040 100%)" }}>
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
-              <Sparkles className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-white text-sm">Get AI-powered matches</p>
-              <p className="text-white/50 text-xs mt-0.5">Upload your resume for Gemini AI analysis in {city.name}</p>
-            </div>
+      {/* Tips row */}
+      <div className="fade-up fade-up-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          { emoji: "🎯", tip: "Upload your resume to unlock AI job matching" },
+          { emoji: "📍", tip: "Switch cities using the city picker in the top bar" },
+          { emoji: "💬", tip: "Ask the AI Advisor anything about your career" },
+        ].map(({ emoji, tip }) => (
+          <div key={tip} className="flex items-start gap-3 p-3.5 rounded-xl"
+            style={{ background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.06)" }}>
+            <span className="text-lg shrink-0">{emoji}</span>
+            <p className="text-xs text-black/50 leading-relaxed">{tip}</p>
           </div>
-          <Button className="bg-emerald-500 hover:bg-emerald-400 text-white shrink-0 shadow-lg"
-            onClick={() => navigate("/match")}>
-            Analyze Resume
-            <ArrowUpRight className="h-4 w-4 ml-1.5" />
-          </Button>
-        </div>
+        ))}
       </div>
+    </div>
+  );
+};
+
+// ── Dashboard with data (after resume analyzed) ──────────────────
+// This would normally come from Firestore/state — for now shown after resume upload
+const Dashboard = () => {
+  // In a real app you'd check if user has any saved data from Firestore
+  // For now always show empty state — data appears after they use the app
+  return (
+    <div className="min-h-[calc(100vh-3.5rem)]">
+      <EmptyDashboard />
     </div>
   );
 };
