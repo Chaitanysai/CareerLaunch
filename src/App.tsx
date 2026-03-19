@@ -9,7 +9,7 @@ import { CityProvider } from "@/hooks/useCity";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ChatBubble from "@/components/advisor/ChatBubble";
 
-// Pages — existing
+// Core pages
 import Landing from "./pages/Landing";
 import IndexPage from "./pages/Index";
 import AuthPage from "./pages/Auth";
@@ -21,20 +21,17 @@ import SkillGapPage from "./pages/SkillGap";
 import AdvisorPage from "./pages/Advisor";
 import NotFound from "./pages/NotFound";
 
-// Pages — new features
+// Tools
 import InterviewPrep from "./pages/InterviewPrep";
 import ResumeBuilder from "./pages/ResumeBuilder";
+import CoverLetter from "./pages/CoverLetter";
+import SalaryCoach from "./pages/SalaryCoach";
 
-// Coming soon placeholder
-const ComingSoon = ({ title }: { title: string }) => (
-  <DashboardLayout title={title}>
-    <div className="max-w-2xl mx-auto px-6 py-20 text-center">
-      <div className="text-5xl mb-4">🚧</div>
-      <h2 className="font-heading text-2xl font-bold text-foreground mb-2">{title}</h2>
-      <p className="text-muted-foreground">This feature is coming soon. Check back shortly!</p>
-    </div>
-  </DashboardLayout>
-);
+// Research
+import CompanyResearch from "./pages/CompanyResearch";
+import CareerRoadmap from "./pages/CareerRoadmap";
+import LinkedInOptimizer from "./pages/LinkedInOptimizer";
+import JobTracker from "./pages/JobTracker";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
@@ -64,7 +61,6 @@ const DashPage = ({ children, title }: { children: React.ReactNode; title: strin
 
 const AppRoutes = () => {
   const { user } = useAuth();
-
   return (
     <>
       <Routes>
@@ -73,8 +69,8 @@ const AppRoutes = () => {
         <Route path="/auth" element={<AuthPage />} />
 
         {/* Main */}
-        <Route path="/match" element={<DashPage title="Resume Matcher"><IndexPage /></DashPage>} />
         <Route path="/dashboard" element={<DashPage title="Dashboard"><Dashboard /></DashPage>} />
+        <Route path="/match" element={<DashPage title="Resume Matcher"><IndexPage /></DashPage>} />
         <Route path="/jobs" element={<DashPage title="Job Board"><JobBoard /></DashPage>} />
         <Route path="/saved" element={<DashPage title="Saved Jobs"><SavedJobs /></DashPage>} />
         <Route path="/profile" element={<DashPage title="My Profile"><Profile /></DashPage>} />
@@ -82,24 +78,19 @@ const AppRoutes = () => {
         <Route path="/advisor" element={<AdvisorPage />} />
 
         {/* Tools */}
-        <Route path="/interview" element={
-          <ProtectedRoute><InterviewPrep /></ProtectedRoute>
-        } />
-        <Route path="/resume-builder" element={
-          <ProtectedRoute><ResumeBuilder /></ProtectedRoute>
-        } />
-        <Route path="/cover-letter" element={<DashPage title="Cover Letter"><ComingSoon title="Cover Letter Generator" /></DashPage>} />
-        <Route path="/salary-coach" element={<DashPage title="Salary Coach"><ComingSoon title="Salary Negotiation Coach" /></DashPage>} />
+        <Route path="/interview" element={<ProtectedRoute><InterviewPrep /></ProtectedRoute>} />
+        <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
+        <Route path="/cover-letter" element={<ProtectedRoute><CoverLetter /></ProtectedRoute>} />
+        <Route path="/salary-coach" element={<ProtectedRoute><SalaryCoach /></ProtectedRoute>} />
 
         {/* Research */}
-        <Route path="/company-research" element={<DashPage title="Company Research"><ComingSoon title="Company Research" /></DashPage>} />
-        <Route path="/career-roadmap" element={<DashPage title="Career Roadmap"><ComingSoon title="Career Roadmap" /></DashPage>} />
-        <Route path="/linkedin" element={<DashPage title="LinkedIn Optimizer"><ComingSoon title="LinkedIn Profile Optimizer" /></DashPage>} />
-        <Route path="/tracker" element={<DashPage title="Job Tracker"><ComingSoon title="Job Application Tracker" /></DashPage>} />
+        <Route path="/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
+        <Route path="/career-roadmap" element={<ProtectedRoute><CareerRoadmap /></ProtectedRoute>} />
+        <Route path="/linkedin" element={<ProtectedRoute><LinkedInOptimizer /></ProtectedRoute>} />
+        <Route path="/tracker" element={<ProtectedRoute><JobTracker /></ProtectedRoute>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-
       {user && <ChatBubble />}
     </>
   );
