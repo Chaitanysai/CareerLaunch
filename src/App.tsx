@@ -25,36 +25,43 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
-// Protected route
+// ── Loading spinner ──────────────────────────────────────────────
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm text-muted-foreground">Loading RoleMatch...</p>
+    </div>
+  </div>
+);
+
+// ── Protected route ──────────────────────────────────────────────
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) return <Spinner />;
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
-// Dashboard page wrapper
+// ── Dashboard page wrapper ───────────────────────────────────────
 const DashPage = ({ children, title }: { children: React.ReactNode; title: string }) => (
   <ProtectedRoute>
     <DashboardLayout title={title}>{children}</DashboardLayout>
   </ProtectedRoute>
 );
 
+// ── Routes ───────────────────────────────────────────────────────
 const AppRoutes = () => {
   const { user } = useAuth();
 
   return (
     <>
       <Routes>
-        {/* Landing — public */}
+        {/* Public */}
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<AuthPage />} />
 
-        {/* Resume analyzer — protected, uses DashboardLayout */}
+        {/* Resume matcher — protected */}
         <Route path="/match" element={
           <ProtectedRoute>
             <DashboardLayout title="Resume Matcher">
@@ -71,15 +78,17 @@ const AppRoutes = () => {
         <Route path="/skillgap" element={<SkillGapPage />} />
         <Route path="/advisor" element={<AdvisorPage />} />
 
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
 
-      {/* Floating chat bubble on all protected pages */}
+      {/* Floating AI chat bubble — shown on all protected pages */}
       {user && <ChatBubble />}
     </>
   );
 };
 
+// ── App ──────────────────────────────────────────────────────────
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
