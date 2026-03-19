@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -21,15 +20,16 @@ const DashboardLayout = ({ children, title }: DashboardLayoutProps) => {
 
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="p-0 w-60 border-0">
+        <SheetContent side="left" className="p-0 w-16 border-0">
           <Sidebar />
         </SheetContent>
       </Sheet>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col md:ml-60 min-w-0">
+      <div className="flex-1 flex flex-col md:ml-16 min-w-0">
         <Topbar onMenuClick={() => setMobileOpen(true)} title={title} />
-        <main className="flex-1 overflow-auto">
+        {/* Dot grid background — Clerk style */}
+        <main className="flex-1 overflow-auto dot-grid">
           {children}
         </main>
       </div>
