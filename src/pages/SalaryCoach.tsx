@@ -2,278 +2,268 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCity } from "@/hooks/useCity";
 import { callAI, safeParseJSON } from "@/services/ai";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DollarSign, TrendingUp, MessageSquare, Target, CheckCircle, AlertCircle, Lightbulb } from "lucide-react";
 
-interface NegotiationResult {
-  marketMin: number;
-  marketMax: number;
-  marketMedian: number;
-  yourAsk: number;
+interface Result {
+  marketMin: number; marketMedian: number; marketMax: number;
   verdict: "underpaid" | "fair" | "above-market";
   verdictText: string;
+  counterMin: number; counterMax: number;
   script: string;
-  tactics: string[];
-  counterOfferRange: { min: number; max: number };
-  redFlags: string[];
-  greenFlags: string[];
+  tips: { icon: string; title: string; body: string }[];
 }
 
 const SalaryCoach = () => {
   const { city } = useCity();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<NegotiationResult | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({
-    jobTitle: "", experience: "3-5", currentCTC: "",
-    offerCTC: "", company: "", skills: "", companySize: "startup",
+    jobTitle: "Senior Product Designer", company: "InnovateTech Solutions",
+    experience: "6.5", location: city.name, currentCTC: "28",
+    companySize: "mid",
   });
-  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const u = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const analyze = async () => {
-    if (!form.jobTitle || !form.offerCTC) {
-      toast({ title: "Enter job title and offer amount", variant: "destructive" });
-      return;
-    }
+    if (!form.jobTitle) { toast({ title: "Enter a job title", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const prompt = `You are a salary negotiation expert for the Indian tech job market.
-
-Analyze this offer and provide negotiation guidance:
-- Role: ${form.jobTitle}
-- City: ${city.name}
-- Experience: ${form.experience} years
-- Current CTC: ${form.currentCTC || "not disclosed"} LPA
-- Offer received: ${form.offerCTC} LPA
-- Company: ${form.company || "not specified"} (${form.companySize})
-- Key skills: ${form.skills || "software development"}
+      const prompt = `Salary negotiation expert for Indian tech market. Analyze this offer:
+Role: ${form.jobTitle} at ${form.company || "unspecified"} in ${form.location}, India
+Experience: ${form.experience} years | Current CTC: ₹${form.currentCTC}L | Company size: ${form.companySize}
 
 Respond ONLY with valid JSON (no markdown):
 {
-  "marketMin": 12,
-  "marketMax": 25,
-  "marketMedian": 18,
-  "yourAsk": 22,
+  "marketMin": 24, "marketMedian": 32.5, "marketMax": 48,
   "verdict": "underpaid",
-  "verdictText": "2-sentence assessment of the offer vs market",
-  "script": "Word-for-word negotiation script they can use on the call or email. 4-5 sentences. Professional and confident.",
-  "tactics": ["tactic 1", "tactic 2", "tactic 3", "tactic 4"],
-  "counterOfferRange": { "min": 20, "max": 24 },
-  "redFlags": ["red flag 1 if any"],
-  "greenFlags": ["positive aspect 1", "positive aspect 2"]
+  "verdictText": "2-sentence assessment based on 400+ data points in ${form.location}",
+  "counterMin": 34, "counterMax": 38,
+  "script": "Word-for-word 3-sentence negotiation script mentioning specific LPA numbers and contributions",
+  "tips": [
+    {"icon": "location_on", "title": "Geo-Premium", "body": "City-specific salary insight"},
+    {"icon": "bolt", "title": "Hot Skill Bonus", "body": "Skill-specific leverage tip"}
+  ]
 }
-
-All salary values in LPA. verdict must be exactly "underpaid", "fair", or "above-market".`;
-
+All salary in LPA. verdict: "underpaid" | "fair" | "above-market".`;
       const raw = await callAI(null, prompt);
-      const parsed = safeParseJSON<NegotiationResult>(raw, null as any);
+      const parsed = safeParseJSON<Result>(raw, null as any);
       setResult(parsed);
     } catch (err: any) {
       toast({ title: "Analysis failed", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
+    } finally { setLoading(false); }
+  };
+
+  const copyScript = () => {
+    if (result?.script) {
+      navigator.clipboard.writeText(result.script);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  const verdictStyle = {
-    underpaid: { color: "text-red-600", bg: "bg-red-50 border-red-200", label: "You're being underpaid" },
-    fair: { color: "text-blue-600", bg: "bg-blue-50 border-blue-200", label: "Fair market offer" },
-    "above-market": { color: "text-green-600", bg: "bg-green-50 border-green-200", label: "Above market rate!" },
+  const verdictConfig = {
+    underpaid: { bg: "#fffbeb", iconBg: "#fde68a", icon: "trending_down", iconColor: "#92400e", labelColor: "#92400e", label: "Slightly Underpaid" },
+    fair: { bg: "#f0fdf4", iconBg: "#dcfce7", icon: "trending_flat", iconColor: "var(--primary)", labelColor: "var(--primary)", label: "Fair Market Rate" },
+    "above-market": { bg: "#eff6ff", iconBg: "#dbeafe", icon: "trending_up", iconColor: "#1d4ed8", labelColor: "#1d4ed8", label: "Above Market!" },
   };
 
   return (
     <DashboardLayout title="Salary Coach">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-heading text-2xl font-bold text-foreground">Salary Negotiation Coach</h1>
-          <p className="text-muted-foreground mt-1">Know your worth and negotiate confidently in {city.name}</p>
+      <div className="max-w-6xl mx-auto p-8 lg:p-12">
+        {/* Header — from Stitch HTML */}
+        <div className="mb-12">
+          <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight mb-2"
+            style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+            Salary Coach
+          </h1>
+          <p className="text-lg" style={{ color: "var(--on-surface-variant)" }}>
+            AI-powered market calibration for high-growth tech roles.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input */}
-          <Card className="card-shadow">
-            <CardHeader className="pb-4">
-              <CardTitle className="font-heading text-base flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-accent" />Offer Details
-              </CardTitle>
-              <CardDescription>Enter your offer details for an honest assessment</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Job Title *</Label>
-                <Input placeholder="e.g. Senior Frontend Engineer" value={form.jobTitle} onChange={(e) => update("jobTitle", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Company</Label>
-                <Input placeholder="e.g. Swiggy, Infosys, Amazon" value={form.company} onChange={(e) => update("company", e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Experience</Label>
-                  <Select value={form.experience} onValueChange={(v) => update("experience", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0-1">Fresher</SelectItem>
-                      <SelectItem value="1-3">1-3 years</SelectItem>
-                      <SelectItem value="3-5">3-5 years</SelectItem>
-                      <SelectItem value="5-8">5-8 years</SelectItem>
-                      <SelectItem value="8+">8+ years</SelectItem>
-                    </SelectContent>
-                  </Select>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left: Input form — surface-container-lowest card */}
+          <div className="lg:col-span-5">
+            <div className="card-stitch p-8" style={{ boxShadow: "0 24px 24px -4px rgba(25,28,30,0.06)" }}>
+              <h2 className="font-bold text-xl mb-8" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                Your Current Benchmarks
+              </h2>
+              <div className="space-y-6">
+                {[
+                  { label: "Job Title", key: "jobTitle", placeholder: "Senior Product Designer" },
+                  { label: "Company", key: "company", placeholder: "InnovateTech Solutions" },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                      style={{ color: "var(--on-surface-variant)" }}>{label}</label>
+                    <input className="input-s" placeholder={placeholder}
+                      value={(form as any)[key]} onChange={e => u(key, e.target.value)} />
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                      style={{ color: "var(--on-surface-variant)" }}>Experience</label>
+                    <div className="relative">
+                      <input className="input-s pr-16" type="number" placeholder="6.5"
+                        value={form.experience} onChange={e => u("experience", e.target.value)} />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold"
+                        style={{ color: "var(--on-surface-variant)" }}>Years</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-widest mb-2"
+                      style={{ color: "var(--on-surface-variant)" }}>Location</label>
+                    <input className="input-s" placeholder={city.name}
+                      value={form.location} onChange={e => u("location", e.target.value)} />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Company Size</Label>
-                  <Select value={form.companySize} onValueChange={(v) => update("companySize", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="startup">Startup (&lt;200)</SelectItem>
-                      <SelectItem value="midsize">Mid-size (200-2000)</SelectItem>
-                      <SelectItem value="large">Large (2000+)</SelectItem>
-                      <SelectItem value="mnc">MNC / FAANG</SelectItem>
-                    </SelectContent>
-                  </Select>
+                {/* Slider for CTC */}
+                <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest"
+                      style={{ color: "var(--on-surface-variant)" }}>Current CTC (LPA)</label>
+                    <span className="font-extrabold text-xl" style={{ color: "var(--primary)", fontFamily: "var(--font-headline)" }}>
+                      ₹ {form.currentCTC}
+                    </span>
+                  </div>
+                  <input type="range" min={5} max={100} className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                    style={{ accentColor: "var(--primary)", background: "var(--surface-container-high)" }}
+                    value={Number(form.currentCTC)}
+                    onChange={e => u("currentCTC", e.target.value)} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Current CTC (LPA)</Label>
-                  <Input placeholder="e.g. 12" value={form.currentCTC} onChange={(e) => update("currentCTC", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Offer Received (LPA) *</Label>
-                  <Input placeholder="e.g. 18" value={form.offerCTC} onChange={(e) => update("offerCTC", e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Your Skills</Label>
-                <Input placeholder="e.g. React, AWS, TypeScript, System Design" value={form.skills} onChange={(e) => update("skills", e.target.value)} />
-              </div>
-              <Button onClick={analyze} disabled={loading} className="w-full gap-2">
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Analyzing {city.name} market...</> : <><TrendingUp className="h-4 w-4" />Analyze My Offer</>}
-              </Button>
-            </CardContent>
-          </Card>
 
-          {/* Results */}
-          <div className="space-y-4">
+                <button className="btn-primary-s w-full justify-center py-4 mt-2"
+                  onClick={analyze} disabled={loading}>
+                  {loading ? (
+                    <><span className="material-symbols-outlined animate-spin" style={{ fontSize: 18 }}>progress_activity</span>Recalibrating...</>
+                  ) : "Recalibrate Analysis"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Results */}
+          <div className="lg:col-span-7 space-y-6">
             {!result ? (
-              <Card className="card-shadow h-full flex items-center justify-center">
-                <CardContent className="text-center py-16">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-30" />
-                  <p className="text-muted-foreground text-sm">Enter your offer details to get a market analysis</p>
-                  <p className="text-muted-foreground text-xs mt-1">We'll tell you if you should negotiate and exactly what to say</p>
-                </CardContent>
-              </Card>
+              <div className="card-stitch p-12 text-center">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  style={{ background: "rgba(0,0,0,0.04)" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 32, color: "var(--outline)" }}>payments</span>
+                </div>
+                <p className="font-bold text-lg" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                  Enter your details and click Recalibrate
+                </p>
+                <p className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>
+                  We'll tell you your exact market position in {city.name}
+                </p>
+              </div>
             ) : (
               <>
-                {/* Verdict */}
-                <Card className={`card-shadow border ${verdictStyle[result.verdict].bg}`}>
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge className={`${verdictStyle[result.verdict].color} bg-transparent border-current`}>
-                        {verdictStyle[result.verdict].label}
-                      </Badge>
-                      <span className={`font-heading text-2xl font-bold ${verdictStyle[result.verdict].color}`}>
-                        ₹{form.offerCTC}L
-                      </span>
+                {/* Verdict card — amber bg from Stitch */}
+                {(() => {
+                  const vc = verdictConfig[result.verdict];
+                  return (
+                    <div className="rounded-3xl p-8 flex items-center gap-6 relative overflow-hidden"
+                      style={{ background: vc.bg }}>
+                      <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
+                        style={{ background: vc.iconBg }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 36, color: vc.iconColor }}>
+                          {vc.icon}
+                        </span>
+                      </div>
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1"
+                          style={{ color: vc.labelColor, opacity: 0.7 }}>Coach Verdict</p>
+                        <h3 className="text-3xl font-extrabold leading-tight"
+                          style={{ fontFamily: "var(--font-headline)", color: vc.labelColor }}>
+                          {vc.label}
+                        </h3>
+                        <p className="text-sm mt-1" style={{ color: vc.labelColor, opacity: 0.8 }}>{result.verdictText}</p>
+                      </div>
+                      <div className="absolute -right-8 top-1/2 -translate-y-1/2 text-[120px] font-black select-none"
+                        style={{ color: `${vc.iconColor}08`, fontFamily: "var(--font-headline)" }}>!</div>
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed">{result.verdictText}</p>
-                  </CardContent>
-                </Card>
+                  );
+                })()}
 
-                {/* Market range */}
-                <Card className="card-shadow">
-                  <CardContent className="p-5">
-                    <p className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
-                      <Target className="h-4 w-4 text-accent" />Market Range in {city.name}
-                    </p>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      {[
-                        { label: "Min", value: result.marketMin, color: "text-muted-foreground" },
-                        { label: "Median", value: result.marketMedian, color: "text-accent font-bold" },
-                        { label: "Max", value: result.marketMax, color: "text-foreground" },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-muted/50 rounded-lg p-3">
-                          <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                          <p className={`font-heading text-lg font-bold ${color}`}>₹{value}L</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 p-3 bg-accent/5 border border-accent/20 rounded-lg text-center">
-                      <p className="text-xs text-muted-foreground">Your counter-offer range</p>
-                      <p className="font-heading font-bold text-accent text-lg">
-                        ₹{result.counterOfferRange.min}L – ₹{result.counterOfferRange.max}L
+                {/* Market range — 3 cards, median in primary */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: "Minimum", value: result.marketMin, sub: "10th Percentile", primary: false },
+                    { label: "Median Market", value: result.marketMedian, sub: "RoleMatch Standard", primary: true },
+                    { label: "Top Talent", value: result.marketMax, sub: "90th Percentile", primary: false },
+                  ].map(({ label, value, sub, primary }) => (
+                    <div key={label} className={`p-6 rounded-3xl text-center ${primary ? "scale-105" : ""}`}
+                      style={{
+                        background: primary ? "var(--primary)" : "var(--surface-container-low)",
+                        boxShadow: primary ? "0 16px 32px var(--primary)30" : "none",
+                      }}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-4"
+                        style={{ color: primary ? "rgba(255,255,255,0.6)" : "var(--on-surface-variant)" }}>
+                        {label}
                       </p>
+                      <p className={`font-extrabold tracking-tight mb-1 ${primary ? "text-4xl" : "text-3xl"}`}
+                        style={{ fontFamily: "var(--font-headline)", color: primary ? "white" : "var(--on-surface)" }}>
+                        ₹ {value}
+                      </p>
+                      <p className="text-[10px] font-bold"
+                        style={{ color: primary ? "rgba(255,255,255,0.6)" : "var(--on-surface-variant)" }}>{sub}</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  ))}
+                </div>
 
-                {/* Script */}
-                <Card className="card-shadow border-accent/20">
-                  <CardContent className="p-5">
-                    <p className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-accent" />Your Negotiation Script
-                    </p>
-                    <div className="bg-muted/50 rounded-lg p-4 text-sm text-foreground leading-relaxed italic border border-border/50">
+                {/* Negotiation script */}
+                <div className="card-stitch p-8">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="p-1.5 rounded-lg" style={{ background: "var(--secondary-container)" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--on-secondary-container)" }}>forum</span>
+                    </div>
+                    <h4 className="font-bold" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                      Your Negotiation Script
+                    </h4>
+                  </div>
+                  <div className="relative pl-6 border-l-2 py-2"
+                    style={{ borderColor: "rgba(0,0,0,0.10)" }}>
+                    <span className="material-symbols-outlined absolute -left-4 top-0 text-3xl"
+                      style={{ color: "var(--primary)", opacity: 0.15 }}>format_quote</span>
+                    <p className="text-base italic leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>
                       "{result.script}"
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Tactics */}
-                <Card className="card-shadow">
-                  <CardContent className="p-5">
-                    <p className="font-heading font-semibold text-sm mb-3 flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-amber-500" />Negotiation Tactics
                     </p>
-                    <div className="space-y-2">
-                      {result.tactics.map((t, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-accent mt-0.5 shrink-0">→</span>
-                          <span className="text-foreground">{t}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button onClick={copyScript}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all"
+                      style={{ background: "var(--surface-container)", color: "var(--on-surface)" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-container-high)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "var(--surface-container)"}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                        {copied ? "check" : "content_copy"}
+                      </span>
+                      {copied ? "Copied!" : "Copy Script"}
+                    </button>
+                    <button className="flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all"
+                      style={{ background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>auto_awesome</span>
+                      Refine with AI
+                    </button>
+                  </div>
+                </div>
 
-                {/* Flags */}
-                {(result.greenFlags.length > 0 || result.redFlags.length > 0) && (
-                  <Card className="card-shadow">
-                    <CardContent className="p-5 space-y-3">
-                      {result.greenFlags.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-green-700 mb-2 flex items-center gap-1">
-                            <CheckCircle className="h-3.5 w-3.5" />Positives
-                          </p>
-                          {result.greenFlags.map((f, i) => (
-                            <p key={i} className="text-sm text-foreground flex items-start gap-2">
-                              <span className="text-green-500">•</span>{f}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                      {result.redFlags.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1">
-                            <AlertCircle className="h-3.5 w-3.5" />Watch out
-                          </p>
-                          {result.redFlags.map((f, i) => (
-                            <p key={i} className="text-sm text-foreground flex items-start gap-2">
-                              <span className="text-red-500">•</span>{f}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Tips grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {result.tips.map((tip, i) => (
+                    <div key={i} className="p-6 rounded-2xl" style={{ background: "var(--surface-container)" }}>
+                      <span className="material-symbols-outlined mb-3" style={{ color: "var(--primary)" }}>{tip.icon}</span>
+                      <h5 className="font-bold text-sm mb-1" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                        {tip.title}
+                      </h5>
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>{tip.body}</p>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
           </div>

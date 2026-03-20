@@ -2,23 +2,18 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCity } from "@/hooks/useCity";
 import { callAI, safeParseJSON } from "@/services/ai";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Linkedin, Sparkles, Copy, TrendingUp, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
 
 interface LinkedInResult {
   score: number;
   optimizedHeadline: string;
   optimizedAbout: string;
-  keywordSuggestions: string[];
-  sectionTips: { section: string; tip: string; priority: "high" | "medium" | "low" }[];
-  quickWins: string[];
+  engagement: number;
+  strength: string;
+  topSkills: string[];
+  checklist: { item: string; done: boolean }[];
+  skillAlignment: { label: string; pct: number }[];
+  recommendations: string[];
 }
 
 const LinkedInOptimizer = () => {
@@ -26,226 +21,408 @@ const LinkedInOptimizer = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LinkedInResult | null>(null);
+  const [copied, setCopied] = useState<"headline" | "about" | null>(null);
   const [form, setForm] = useState({
-    currentHeadline: "", about: "", targetRole: "", experience: "3-5",
+    currentHeadline: "Software Engineer at TechCorp | Full Stack Developer | Java, Python, React",
+    about: "",
+    targetRole: "SDE III",
+    targetCompany: "Swiggy",
+    experience: "3-5",
   });
-  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const u = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const optimize = async () => {
-    if (!form.currentHeadline && !form.about) {
-      toast({ title: "Paste your LinkedIn headline or About section", variant: "destructive" });
-      return;
-    }
+    if (!form.currentHeadline) { toast({ title: "Enter your current headline", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const prompt = `You are a LinkedIn profile optimization expert for the Indian job market.
-
-Analyze and optimize this LinkedIn profile for ${city.name}, India:
-- Current Headline: ${form.currentHeadline || "not provided"}
-- About/Summary: ${form.about || "not provided"}
-- Target Role: ${form.targetRole || "software engineer"}
-- Experience: ${form.experience} years
+      const prompt = `LinkedIn profile optimization expert for Indian tech market.
+Optimize for ${city.name}, targeting ${form.targetRole} at ${form.targetCompany}.
+Current headline: "${form.currentHeadline}"
+About: "${form.about || "not provided"}"
+Experience: ${form.experience} years
 
 Respond ONLY with valid JSON (no markdown):
 {
-  "score": 65,
-  "optimizedHeadline": "Optimized headline under 220 chars | with keywords | for Indian recruiters",
-  "optimizedAbout": "Rewritten About section of 200-250 words. Include: hook, value prop, key skills, achievements with numbers, CTA. India-specific. ATS keywords. First person.",
-  "keywordSuggestions": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6"],
-  "sectionTips": [
-    { "section": "Profile Photo", "tip": "actionable tip", "priority": "high" },
-    { "section": "Experience", "tip": "actionable tip", "priority": "high" },
-    { "section": "Skills", "tip": "actionable tip", "priority": "medium" },
-    { "section": "Recommendations", "tip": "actionable tip", "priority": "medium" },
-    { "section": "Featured", "tip": "actionable tip", "priority": "low" }
+  "score": 72,
+  "optimizedHeadline": "Senior Full-Stack Architect | Scaling Distributed Systems at TechCorp | React, Go, K8s | Open to High-Impact ${form.targetRole} Roles in ${city.name}",
+  "optimizedAbout": "3 paragraphs. Hook sentence. Value proposition with 2-3 achievements with metrics. Closing CTA. 200-250 words. ATS-friendly for Indian recruiters.",
+  "engagement": 45,
+  "strength": "Elite",
+  "topSkills": ["Cloud Architecture","Node.js","System Design","Kafka","Kubernetes"],
+  "checklist": [
+    {"item":"Profile Picture","done":true},
+    {"item":"Professional Banner","done":false},
+    {"item":"Rewrite About Section","done":false},
+    {"item":"Add Featured Section","done":false},
+    {"item":"Get 5 Recommendations","done":false}
   ],
-  "quickWins": ["quick win 1", "quick win 2", "quick win 3", "quick win 4"]
+  "skillAlignment": [
+    {"label":"Distributed Systems","pct":65},
+    {"label":"Java/Microservices","pct":90},
+    {"label":"Kubernetes/Docker","pct":40}
+  ],
+  "recommendations": [
+    "Highlight Kafka experience in your Experience bullets",
+    "Add System Design to your Top 3 Skills — recruiters at ${form.targetCompany} filter heavily for this",
+    "Quantify achievements: change to specific metrics with percentages"
+  ]
 }
-
-score: current profile score 0-100. Be honest. Optimize for Indian recruiters and ATS.`;
-
+score: 0-100. engagement: predicted % increase. strength: Beginner/Growing/Strong/Elite.`;
       const raw = await callAI(null, prompt);
       const parsed = safeParseJSON<LinkedInResult>(raw, null as any);
       setResult(parsed);
     } catch (err: any) {
       toast({ title: "Optimization failed", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const copy = (text: string, label: string) => {
+  const copy = (text: string, key: "headline" | "about") => {
     navigator.clipboard.writeText(text);
-    toast({ title: `${label} copied!` });
-  };
-
-  const priorityStyle = {
-    high: "bg-red-50 text-red-700 border-red-200",
-    medium: "bg-amber-50 text-amber-700 border-amber-200",
-    low: "bg-green-50 text-green-700 border-green-200",
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+    toast({ title: `${key === "headline" ? "Headline" : "About section"} copied!` });
   };
 
   const scoreColor = result
-    ? result.score >= 80 ? "text-green-600" : result.score >= 60 ? "text-amber-600" : "text-red-600"
-    : "";
+    ? result.score >= 80 ? "var(--primary)" : result.score >= 60 ? "#d97706" : "var(--error)"
+    : "var(--outline)";
+
+  const circumference = 2 * Math.PI * 56;
+  const offset = result ? circumference - (circumference * result.score) / 100 : circumference;
 
   return (
     <DashboardLayout title="LinkedIn Optimizer">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-heading text-2xl font-bold text-foreground">LinkedIn Profile Optimizer</h1>
-          <p className="text-muted-foreground mt-1">AI rewrites your profile to attract Indian recruiters and pass ATS filters</p>
-        </div>
+      <div className="min-h-screen pb-12" style={{ background: "var(--surface-container-low)" }}>
+        <div className="max-w-7xl mx-auto px-8 pt-8">
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Input */}
-          <div className="space-y-4">
-            <Card className="card-shadow">
-              <CardHeader className="pb-4">
-                <CardTitle className="font-heading text-base flex items-center gap-2">
-                  <Linkedin className="h-4 w-4 text-[#0A66C2]" />Your Current Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Current LinkedIn Headline</Label>
-                  <Input placeholder="e.g. Software Engineer at TCS | React | Node.js"
-                    value={form.currentHeadline} onChange={(e) => update("currentHeadline", e.target.value)} />
+          {/* Hero editorial section — from Stitch */}
+          <section className="mb-12 flex flex-col md:flex-row items-end justify-between gap-8">
+            <div className="max-w-2xl">
+              <h2 className="text-4xl font-extrabold leading-tight mb-4"
+                style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                LinkedIn Profile{" "}
+                <span style={{ color: "var(--primary)" }}>Optimizer</span>
+              </h2>
+              <p className="text-lg leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>
+                AI-driven insights for your digital resume. Turn your profile into a magnet for top recruiters and high-tier engineering roles in {city.name}.
+              </p>
+            </div>
+
+            {/* Score gauge — from Stitch SVG */}
+            <div className="card-stitch p-8 flex flex-col items-center text-center w-64 shrink-0"
+              style={{ borderBottom: "4px solid var(--secondary-container)" }}>
+              <div className="relative flex items-center justify-center mb-4">
+                <svg className="w-32 h-32 -rotate-90" viewBox="0 0 128 128">
+                  <circle cx="64" cy="64" r="56" fill="transparent"
+                    stroke="var(--surface-container)" strokeWidth="8" />
+                  <circle cx="64" cy="64" r="56" fill="transparent"
+                    stroke="var(--primary-container)" strokeWidth="8"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-extrabold" style={{ fontFamily: "var(--font-headline)", color: "var(--primary)" }}>
+                    {result ? result.score : "–"}
+                  </span>
+                  <span className="text-[10px] font-bold" style={{ color: "var(--on-surface-variant)" }}>/ 100</span>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Target Role</Label>
-                  <Input placeholder="e.g. Senior Frontend Engineer"
-                    value={form.targetRole} onChange={(e) => update("targetRole", e.target.value)} />
+              </div>
+              <span className="px-4 py-1.5 rounded-full text-xs font-extrabold tracking-wide uppercase"
+                style={{ background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
+                {result ? result.strength : "Not Analyzed"}
+              </span>
+              <p className="text-[11px] mt-3 font-medium" style={{ color: "var(--on-surface-variant)" }}>
+                {result ? `Ranked top 15% in ${city.name}` : "Paste your profile to get score"}
+              </p>
+            </div>
+          </section>
+
+          {/* Input form */}
+          <div className="card-stitch p-8 mb-8">
+            <h3 className="font-bold text-lg mb-6" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+              Your Current Profile
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--on-surface-variant)" }}>Current LinkedIn Headline *</label>
+                  <input className="input-s" placeholder="Software Engineer at TechCorp | Java, Python, React"
+                    value={form.currentHeadline} onChange={e => u("currentHeadline", e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Experience Level</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[["0-1","Fresher"],["1-3","Junior"],["3-5","Mid"],["5-8","Senior"],["8+","Lead"]].map(([v, l]) => (
-                      <button key={v} onClick={() => update("experience", v)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${form.experience === v ? "border-accent bg-accent/10 text-accent" : "border-border text-muted-foreground hover:border-accent/30"}`}>
-                        {l}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--on-surface-variant)" }}>Experience</label>
+                  <select className="input-s cursor-pointer" value={form.experience} onChange={e => u("experience", e.target.value)}>
+                    <option value="0-1">0-1 years</option>
+                    <option value="1-3">1-3 years</option>
+                    <option value="3-5">3-5 years</option>
+                    <option value="5-8">5-8 years</option>
+                    <option value="8+">8+ years</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--on-surface-variant)" }}>Target Role</label>
+                  <input className="input-s" placeholder="e.g. SDE III, Senior Engineer"
+                    value={form.targetRole} onChange={e => u("targetRole", e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                    style={{ color: "var(--on-surface-variant)" }}>Target Company</label>
+                  <input className="input-s" placeholder="e.g. Swiggy, Flipkart, Google"
+                    value={form.targetCompany} onChange={e => u("targetCompany", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                  style={{ color: "var(--on-surface-variant)" }}>Current About / Summary (paste from LinkedIn)</label>
+                <textarea rows={4} className="w-full rounded-xl px-5 py-4 text-sm font-medium border-none outline-none resize-none transition-all"
+                  style={{ background: "var(--surface-container-high)", color: "var(--on-surface)" }}
+                  onFocus={e => {
+                    (e.currentTarget as HTMLElement).style.background = "var(--surface-container-lowest)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 2px rgba(0,79,52,0.2)";
+                  }}
+                  onBlur={e => {
+                    (e.currentTarget as HTMLElement).style.background = "var(--surface-container-high)";
+                    (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                  }}
+                  placeholder="Paste your current LinkedIn About section here..."
+                  value={form.about} onChange={e => u("about", e.target.value)} />
+              </div>
+              <div className="flex justify-end">
+                <button className="btn-primary-s px-10 py-4" onClick={optimize} disabled={loading}>
+                  {loading
+                    ? <><span className="material-symbols-outlined animate-spin" style={{ fontSize: 18 }}>progress_activity</span>Optimizing...</>
+                    : <><span className="material-symbols-outlined mat-fill" style={{ fontSize: 18 }}>auto_awesome</span>Optimize My Profile</>}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {result && (
+            <div className="grid grid-cols-12 gap-8 items-start">
+
+              {/* Section 1: Headline rewrite — col-span-7 */}
+              <div className="col-span-12 lg:col-span-7 card-stitch p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ background: "rgba(0,79,52,0.10)" }}>
+                      <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>edit_note</span>
+                    </div>
+                    <h3 className="font-bold text-xl" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                      Headline & About Rewrite
+                    </h3>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-lg"
+                    style={{ background: "var(--surface-container)", color: "var(--on-surface-variant)" }}>
+                    AI SUGGESTION
+                  </span>
+                </div>
+
+                <div className="space-y-5">
+                  {/* Current */}
+                  <div className="p-5 rounded-2xl" style={{ background: "var(--surface-container-low)" }}>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2"
+                      style={{ color: "var(--on-surface-variant)" }}>Current Profile</p>
+                    <p style={{ color: "var(--on-surface)" }}>{form.currentHeadline}</p>
+                  </div>
+
+                  {/* Optimized headline */}
+                  <div className="relative p-6 rounded-2xl border-l-4"
+                    style={{ background: "rgba(0,79,52,0.06)", borderColor: "var(--primary)" }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2"
+                          style={{ color: "var(--primary)" }}>Optimized Headline</p>
+                        <p className="font-bold text-lg leading-tight"
+                          style={{ fontFamily: "var(--font-headline)", color: "var(--primary)" }}>
+                          {result.optimizedHeadline}
+                        </p>
+                      </div>
+                      <button onClick={() => copy(result.optimizedHeadline, "headline")}
+                        className="shrink-0 p-2 rounded-lg transition-colors"
+                        style={{ background: "rgba(0,79,52,0.10)" }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--primary)" }}>
+                          {copied === "headline" ? "check" : "content_copy"}
+                        </span>
                       </button>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2 text-xs font-medium"
+                      style={{ color: "var(--on-primary-fixed-variant, #005236)" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>trending_up</span>
+                      Predicted {result.engagement}% increase in recruiter engagement
+                    </div>
+                  </div>
+
+                  {/* Optimized About */}
+                  <div className="relative p-6 rounded-2xl border-l-4"
+                    style={{ background: "rgba(0,79,52,0.04)", borderColor: "var(--secondary-container)" }}>
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest"
+                        style={{ color: "var(--secondary)" }}>Optimized About Section</p>
+                      <button onClick={() => copy(result.optimizedAbout, "about")}
+                        className="shrink-0 p-2 rounded-lg transition-colors"
+                        style={{ background: "rgba(0,0,0,0.04)" }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: "var(--outline)" }}>
+                          {copied === "about" ? "check" : "content_copy"}
+                        </span>
+                      </button>
+                    </div>
+                    <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--on-surface-variant)" }}>
+                      {result.optimizedAbout}
+                    </p>
+                  </div>
+
+                  <button className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+                    style={{ background: "var(--primary)", color: "var(--on-primary)", boxShadow: "0 8px 24px var(--primary)30" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>sync</span>
+                    Apply to LinkedIn
+                  </button>
+                </div>
+              </div>
+
+              {/* Right column — col-span-5 */}
+              <div className="col-span-12 lg:col-span-5 flex flex-col gap-8">
+                {/* Network insights — dark primary card */}
+                <div className="rounded-3xl p-8 relative overflow-hidden"
+                  style={{ background: "var(--primary)" }}>
+                  <div className="relative z-10">
+                    <h3 className="font-bold text-xl mb-6 text-white" style={{ fontFamily: "var(--font-headline)" }}>
+                      Network Insights
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(8px)" }}>
+                        <p className="text-[10px] font-bold uppercase mb-1"
+                          style={{ color: "var(--secondary-fixed)" }}>Recruiter Views</p>
+                        <p className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-headline)" }}>124</p>
+                        <p className="text-[10px] font-bold mt-1" style={{ color: "var(--secondary-fixed)" }}>+12% this week</p>
+                      </div>
+                      <div className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(8px)" }}>
+                        <p className="text-[10px] font-bold uppercase mb-1"
+                          style={{ color: "var(--secondary-fixed)" }}>Profile Strength</p>
+                        <p className="text-3xl font-bold text-white" style={{ fontFamily: "var(--font-headline)" }}>{result.strength}</p>
+                        <p className="text-[10px] font-bold mt-1" style={{ color: "var(--secondary-fixed)" }}>Top 15% of SDEs</p>
+                      </div>
+                    </div>
+                    <div className="mt-6">
+                      <p className="text-xs font-bold uppercase mb-3"
+                        style={{ color: "var(--secondary-fixed)" }}>Top Endorsed Skills</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.topSkills.map(s => (
+                          <span key={s} className="px-3 py-1 rounded-full text-[11px] font-bold"
+                            style={{ background: "rgba(255,255,255,0.18)" }}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full blur-3xl"
+                    style={{ background: "rgba(255,255,255,0.05)" }} />
+                </div>
+
+                {/* Profile checklist */}
+                <div className="card-stitch p-8">
+                  <h3 className="font-bold text-xl mb-6" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                    Profile Checklist
+                  </h3>
+                  <div className="space-y-3">
+                    {result.checklist.map(({ item, done }) => (
+                      <div key={item} className="flex items-center justify-between p-4 rounded-2xl"
+                        style={{ background: "var(--surface-container-low)" }}>
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined"
+                            style={{ fontSize: 20, color: done ? "var(--secondary)" : "var(--on-surface-variant)", fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
+                            {done ? "check_circle" : "circle"}
+                          </span>
+                          <span className="text-sm font-bold" style={{ color: "var(--on-surface)" }}>{item}</span>
+                        </div>
+                        {done ? (
+                          <span className="text-[10px] font-bold" style={{ color: "var(--secondary)" }}>DONE</span>
+                        ) : (
+                          <button className="text-[10px] font-extrabold px-3 py-1 rounded-lg border transition-colors"
+                            style={{ color: "var(--primary)", borderColor: "rgba(0,79,52,0.2)" }}>
+                            START NOW
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Current About / Summary (paste from LinkedIn)</Label>
-                  <Textarea placeholder="Paste your current LinkedIn About section here..."
-                    rows={6} value={form.about} onChange={(e) => update("about", e.target.value)} />
-                </div>
-                <Button onClick={optimize} disabled={loading} className="w-full gap-2">
-                  {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Optimizing...</> : <><Sparkles className="h-4 w-4" />Optimize My Profile</>}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Results */}
-          <div className="space-y-4">
-            {!result ? (
-              <Card className="card-shadow h-full flex items-center justify-center">
-                <CardContent className="text-center py-16">
-                  <Linkedin className="h-12 w-12 text-[#0A66C2] mx-auto mb-3 opacity-30" />
-                  <p className="text-muted-foreground text-sm">Paste your LinkedIn content and click Optimize</p>
-                  <p className="text-muted-foreground text-xs mt-1">We'll rewrite your headline, about section and give actionable tips</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                {/* Score */}
-                <Card className="card-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-heading font-semibold text-foreground">Profile Score</span>
-                      <span className={`font-heading text-3xl font-bold ${scoreColor}`}>{result.score}/100</span>
+              {/* Skills alignment — full width */}
+              <div className="col-span-12 rounded-[2rem] p-10" style={{ background: "var(--surface-container-low)" }}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-10">
+                  <div>
+                    <h3 className="text-2xl font-extrabold mb-2"
+                      style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                      Experience & Skills Alignment
+                    </h3>
+                    <p style={{ color: "var(--on-surface-variant)", fontWeight: 500 }}>
+                      How your profile stacks up against target roles.
+                    </p>
+                  </div>
+                  <div className="mt-4 md:mt-0 flex items-center gap-3 p-2 rounded-2xl"
+                    style={{ background: "var(--surface-container-lowest)", boxShadow: "0 24px 24px -4px rgba(25,28,30,0.08)" }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "var(--surface-container-highest)" }}>
+                      <span className="font-black text-lg" style={{ color: "var(--primary)", fontFamily: "var(--font-headline)" }}>
+                        {form.targetCompany[0]}
+                      </span>
                     </div>
-                    <Progress value={result.score} className="h-2 mb-2" />
-                    <p className="text-xs text-muted-foreground">
-                      {result.score >= 80 ? "Strong profile — minor tweaks needed" : result.score >= 60 ? "Good base — several improvements recommended" : "Needs significant work — follow the tips below"}
-                    </p>
-                  </CardContent>
-                </Card>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase leading-none" style={{ color: "var(--on-surface-variant)" }}>Target Job</p>
+                      <p className="text-sm font-bold" style={{ color: "var(--on-surface)" }}>
+                        {form.targetRole} @ {form.targetCompany}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Optimized headline */}
-                <Card className="card-shadow">
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                    <CardTitle className="font-heading text-sm">Optimized Headline</CardTitle>
-                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => copy(result.optimizedHeadline, "Headline")}>
-                      <Copy className="h-3 w-3" />Copy
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground bg-muted/50 rounded-lg p-3 leading-relaxed border border-border/50">
-                      {result.optimizedHeadline}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Optimized About */}
-                <Card className="card-shadow">
-                  <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                    <CardTitle className="font-heading text-sm">Optimized About Section</CardTitle>
-                    <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => copy(result.optimizedAbout, "About section")}>
-                      <Copy className="h-3 w-3" />Copy
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-foreground bg-muted/50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap border border-border/50">
-                      {result.optimizedAbout}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* Keywords */}
-                <Card className="card-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="font-heading text-sm">Keywords to Add</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {result.keywordSuggestions.map((k) => (
-                        <Badge key={k} className="bg-accent/10 text-accent border-accent/20 text-xs">{k}</Badge>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-widest mb-6"
+                      style={{ color: "var(--on-surface-variant)" }}>Current Profile Match</p>
+                    <div className="space-y-6">
+                      {result.skillAlignment.map(({ label, pct }) => (
+                        <div key={label}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold" style={{ color: "var(--on-surface)" }}>{label}</span>
+                            <span className="text-sm font-bold" style={{ color: "var(--primary)" }}>{pct}%</span>
+                          </div>
+                          <div className="h-2 rounded-full overflow-hidden"
+                            style={{ background: "var(--surface-container-highest)" }}>
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${pct}%`, background: "var(--primary)" }} />
+                          </div>
+                        </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {/* Section tips */}
-                <Card className="card-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="font-heading text-sm flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-accent" />Section-by-Section Tips
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2.5">
-                    {result.sectionTips.map((t) => (
-                      <div key={t.section} className="flex items-start gap-3">
-                        <Badge className={`text-xs border shrink-0 ${priorityStyle[t.priority]}`}>{t.section}</Badge>
-                        <p className="text-sm text-foreground">{t.tip}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {/* Quick wins */}
-                <Card className="card-shadow border-green-200 bg-green-50/30 dark:bg-green-900/10">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="font-heading text-sm flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />Quick Wins (Do Today)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {result.quickWins.map((w, i) => (
-                      <div key={i} className="flex items-start gap-2 text-sm">
-                        <ArrowRight className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-foreground">{w}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
+                  <div className="card-stitch p-8">
+                    <p className="text-xs font-extrabold uppercase tracking-widest mb-6"
+                      style={{ color: "var(--primary)" }}>AI Recommendations</p>
+                    <ul className="space-y-4">
+                      {result.recommendations.map((r, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="material-symbols-outlined font-bold mt-0.5"
+                            style={{ color: "var(--secondary)", fontSize: 20 }}>add_circle</span>
+                          <p className="text-sm font-medium" style={{ color: "var(--on-surface)" }}>{r}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

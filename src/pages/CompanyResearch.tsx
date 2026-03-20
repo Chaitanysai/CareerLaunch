@@ -2,280 +2,340 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCity } from "@/hooks/useCity";
 import { callAI, safeParseJSON } from "@/services/ai";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Search, Star, TrendingUp, Users, DollarSign, ThumbsUp, ThumbsDown, AlertTriangle } from "lucide-react";
 
-interface CompanyResearch {
-  name: string; founded: string; size: string; type: string;
-  headquarters: string; industry: string; description: string;
-  salaryRanges: { role: string; min: number; max: number }[];
-  ratings: { overall: number; workLifeBalance: number; growth: number; culture: number; management: number };
-  pros: string[]; cons: string[];
-  interviewProcess: string[];
+interface CompanyData {
+  name: string; industry: string; size: string;
+  hiring: "actively-hiring" | "selective" | "freeze";
+  rating: number; reviewCount: number;
+  description: string;
   techStack: string[];
-  recentNews: string[];
-  hiringStatus: "actively-hiring" | "selective" | "freeze";
+  ratings: { label: string; value: number }[];
+  salaryRanges: { role: string; min: number; max: number }[];
+  pros: string[]; cons: string[];
+  interviewProcess: { step: string; desc: string }[];
   verdict: string;
 }
+
+const POPULAR = ["Flipkart", "Razorpay", "Swiggy", "PhonePe", "CRED", "Zepto", "Zomato", "Amazon India", "Google India", "Microsoft India"];
 
 const CompanyResearch = () => {
   const { city } = useCity();
   const { toast } = useToast();
-  const [company, setCompany] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<CompanyResearch | null>(null);
+  const [data, setData] = useState<CompanyData | null>(null);
 
-  const research = async () => {
-    if (!company.trim()) { toast({ title: "Enter a company name", variant: "destructive" }); return; }
+  const research = async (co: string = query) => {
+    if (!co.trim()) { toast({ title: "Enter a company name", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const prompt = `You are an expert on Indian tech companies. Provide detailed research on "${company}" for a job seeker in ${city.name}, India.
+      const prompt = `Expert on Indian tech companies. Research "${co}" for a job seeker in ${city.name}.
 
 Respond ONLY with valid JSON (no markdown):
 {
-  "name": "${company}",
-  "founded": "year",
-  "size": "e.g. 10,000+ employees",
-  "type": "e.g. Startup / MNC / Product / Service",
-  "headquarters": "city",
-  "industry": "e.g. Fintech, E-commerce",
+  "name": "${co}",
+  "industry": "E-commerce",
+  "size": "15,000+ employees",
+  "hiring": "actively-hiring",
+  "rating": 4.2,
+  "reviewCount": 12400,
   "description": "3-sentence company overview",
-  "salaryRanges": [
-    {"role": "Software Engineer", "min": 12, "max": 20},
-    {"role": "Senior Engineer", "min": 20, "max": 35},
-    {"role": "Engineering Manager", "min": 35, "max": 60}
+  "techStack": ["React.js","Java/Spring","Cassandra","GCP","Kafka"],
+  "ratings": [
+    {"label":"Work-Life Balance","value":3.8},
+    {"label":"Culture & Values","value":4.5},
+    {"label":"Career Growth","value":4.8},
+    {"label":"Job Security","value":4.1}
   ],
-  "ratings": {
-    "overall": 3.8,
-    "workLifeBalance": 3.5,
-    "growth": 4.0,
-    "culture": 3.7,
-    "management": 3.6
-  },
-  "pros": ["pro1", "pro2", "pro3", "pro4"],
-  "cons": ["con1", "con2", "con3"],
-  "interviewProcess": ["Round 1: description", "Round 2: description", "Round 3: description"],
-  "techStack": ["React", "Node.js", "AWS", "etc"],
-  "recentNews": ["news item 1", "news item 2"],
-  "hiringStatus": "actively-hiring",
-  "verdict": "2-sentence honest verdict on whether to join this company"
+  "salaryRanges": [
+    {"role":"Software Engineer I","min":24,"max":32},
+    {"role":"Senior Engineer (SDE II)","min":38,"max":55},
+    {"role":"SDE III / Tech Lead","min":65,"max":90}
+  ],
+  "pros": ["pro1","pro2","pro3"],
+  "cons": ["con1","con2"],
+  "interviewProcess": [
+    {"step":"Online Assessment","desc":"2 DS/Algo questions (90 mins)"},
+    {"step":"Machine Coding","desc":"Design and implement a system module in 2 hours"},
+    {"step":"Technical Interviews","desc":"System Design (LLD/HLD) deep-dives"},
+    {"step":"Hiring Manager","desc":"Culture fit and leadership evaluation"}
+  ],
+  "verdict": "2-sentence honest assessment"
 }
-
-All salary values in LPA. hiringStatus: "actively-hiring", "selective", or "freeze". Be honest and accurate.`;
-
+hiring: "actively-hiring" | "selective" | "freeze". Salary in LPA. Be accurate.`;
       const raw = await callAI(null, prompt);
-      const parsed = safeParseJSON<CompanyResearch>(raw, null as any);
+      const parsed = safeParseJSON<CompanyData>(raw, null as any);
       setData(parsed);
     } catch (err: any) {
       toast({ title: "Research failed", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const hiringBadge = {
-    "actively-hiring": "bg-green-50 text-green-700 border-green-200",
-    selective: "bg-amber-50 text-amber-700 border-amber-200",
-    freeze: "bg-red-50 text-red-700 border-red-200",
+    "actively-hiring": { bg: "var(--secondary-container)", color: "var(--on-secondary-container)", label: "HIRING NOW" },
+    selective: { bg: "#fef3c7", color: "#92400e", label: "SELECTIVE" },
+    freeze: { bg: "#fee2e2", color: "#991b1b", label: "FREEZE" },
   };
-
-  const RatingBar = ({ label, value }: { label: string; value: number }) => (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium text-foreground">{value}/5</span>
-      </div>
-      <Progress value={(value / 5) * 100} className="h-1.5" />
-    </div>
-  );
 
   return (
     <DashboardLayout title="Company Research">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-heading text-2xl font-bold text-foreground">Company Research</h1>
-          <p className="text-muted-foreground mt-1">AI-powered insights on any Indian company — culture, salary, interview process</p>
-        </div>
+      <div className="p-8 min-h-screen" style={{ background: "var(--surface-container-low)" }}>
+        <div className="max-w-6xl mx-auto">
 
-        {/* Search */}
-        <div className="flex gap-3 mb-8">
-          <div className="relative flex-1">
-            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9 h-11" placeholder="Enter company name e.g. Flipkart, Razorpay, TCS, Infosys..."
-              value={company} onChange={(e) => setCompany(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && research()} />
-          </div>
-          <Button onClick={research} disabled={loading} className="h-11 px-6 gap-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Research
-          </Button>
-        </div>
-
-        {loading && (
-          <div className="text-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto mb-3" />
-            <p className="text-muted-foreground">Researching {company}...</p>
-          </div>
-        )}
-
-        {data && !loading && (
-          <div className="space-y-5 animate-fade-in-up">
-            {/* Header card */}
-            <Card className="card-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="font-heading text-2xl font-bold text-foreground">{data.name}</h2>
-                      <Badge className={`border text-xs ${hiringBadge[data.hiringStatus]}`}>
-                        {data.hiringStatus === "actively-hiring" ? "Actively Hiring" : data.hiringStatus === "selective" ? "Selective Hiring" : "Hiring Freeze"}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                      <span>{data.industry}</span>
-                      <span>•</span><span>{data.type}</span>
-                      <span>•</span><span>{data.size}</span>
-                      <span>•</span><span>Founded {data.founded}</span>
-                      <span>•</span><span>HQ: {data.headquarters}</span>
-                    </div>
-                  </div>
-                  <div className="text-center shrink-0">
-                    <div className="font-heading text-3xl font-bold text-accent">{data.ratings.overall}</div>
-                    <div className="flex items-center gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`h-3 w-3 ${i < Math.round(data.ratings.overall) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">Overall</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{data.description}</p>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Ratings */}
-              <Card className="card-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="font-heading text-sm flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />Ratings Breakdown
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <RatingBar label="Work-Life Balance" value={data.ratings.workLifeBalance} />
-                  <RatingBar label="Career Growth" value={data.ratings.growth} />
-                  <RatingBar label="Culture & Values" value={data.ratings.culture} />
-                  <RatingBar label="Management" value={data.ratings.management} />
-                </CardContent>
-              </Card>
-
-              {/* Salary */}
-              <Card className="card-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="font-heading text-sm flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-accent" />Salary Ranges (LPA)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2.5">
-                  {data.salaryRanges.map((s) => (
-                    <div key={s.role} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-lg">
-                      <span className="text-sm font-medium text-foreground">{s.role}</span>
-                      <span className="text-sm font-bold text-accent">₹{s.min}L – ₹{s.max}L</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Pros & Cons */}
-              <Card className="card-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="font-heading text-sm">Pros & Cons</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold text-green-700 flex items-center gap-1 mb-2">
-                      <ThumbsUp className="h-3.5 w-3.5" />Pros
-                    </p>
-                    {data.pros.map((p, i) => (
-                      <p key={i} className="text-sm flex items-start gap-2 mb-1">
-                        <span className="text-green-500 mt-0.5">✓</span>{p}
-                      </p>
-                    ))}
-                  </div>
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-2">
-                      <ThumbsDown className="h-3.5 w-3.5" />Cons
-                    </p>
-                    {data.cons.map((c, i) => (
-                      <p key={i} className="text-sm flex items-start gap-2 mb-1">
-                        <span className="text-red-400 mt-0.5">✗</span>{c}
-                      </p>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Interview Process */}
-              <Card className="card-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="font-heading text-sm flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-500" />Interview Process
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {data.interviewProcess.map((step, i) => (
-                    <div key={i} className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-accent/10 text-accent text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
-                        {i + 1}
-                      </div>
-                      <p className="text-sm text-foreground leading-relaxed">{step}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+          {/* Search — from Stitch header style */}
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+              Company Research
+            </h1>
+            <p className="text-lg mb-6" style={{ color: "var(--on-surface-variant)" }}>
+              AI-powered insights on culture, salary, interview process & hiring status.
+            </p>
+            <div className="flex gap-3">
+              <div className="relative flex-1 max-w-2xl">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--outline)", fontSize: 20 }}>search</span>
+                <input className="w-full pl-12 pr-6 py-4 rounded-2xl text-sm font-medium border-none outline-none transition-all"
+                  style={{ background: "var(--surface-container-lowest)", color: "var(--on-surface)", boxShadow: "0 1px 3px rgba(25,28,30,0.08)" }}
+                  onFocus={e => (e.currentTarget as HTMLElement).style.boxShadow = `0 0 0 2px var(--primary)40`}
+                  onBlur={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(25,28,30,0.08)"}
+                  placeholder="Search for companies, roles, or salaries..."
+                  value={query} onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && research()} />
+              </div>
+              <button className="btn-primary-s px-8" onClick={() => research()} disabled={loading}>
+                {loading ? <span className="material-symbols-outlined animate-spin" style={{ fontSize: 20 }}>progress_activity</span> : "Research"}
+              </button>
             </div>
 
-            {/* Tech stack */}
-            <Card className="card-shadow">
-              <CardHeader className="pb-3">
-                <CardTitle className="font-heading text-sm">Tech Stack</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {data.techStack.map((t) => (
-                    <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+            {/* Popular chips */}
+            {!data && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {POPULAR.map(co => (
+                  <button key={co} onClick={() => { setQuery(co); research(co); }}
+                    className="text-xs px-3 py-1.5 rounded-full font-semibold transition-all"
+                    style={{ background: "var(--surface-container-lowest)", color: "var(--on-surface-variant)", border: "1px solid var(--outline-variant)" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--primary)"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--outline-variant)"}>
+                    {co}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {loading && (
+            <div className="flex items-center justify-center py-20 gap-3">
+              <span className="material-symbols-outlined animate-spin" style={{ fontSize: 28, color: "var(--primary)" }}>progress_activity</span>
+              <span style={{ color: "var(--on-surface-variant)" }}>Researching {query}...</span>
+            </div>
+          )}
+
+          {data && !loading && (
+            <div className="space-y-8 animate-fade-in-up">
+              {/* Company header — from Stitch: white card, logo, stars */}
+              <div className="card-stitch p-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div className="flex items-center gap-6">
+                    {/* Logo */}
+                    <div className="w-24 h-24 rounded-3xl flex items-center justify-center shrink-0 border"
+                      style={{ background: "var(--surface-container-lowest)", borderColor: "var(--surface-container)" }}>
+                      <span className="text-4xl font-black" style={{ color: "var(--primary)", fontFamily: "var(--font-headline)" }}>
+                        {data.name[0]}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-4xl font-bold tracking-tight" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                          {data.name}
+                        </h1>
+                        {data.hiring && (
+                          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
+                            style={{ background: hiringBadge[data.hiring].bg, color: hiringBadge[data.hiring].color }}>
+                            <span className="material-symbols-outlined mat-fill" style={{ fontSize: 12 }}>check_circle</span>
+                            {hiringBadge[data.hiring].label}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-medium text-lg mb-2" style={{ color: "var(--on-surface-variant)" }}>
+                        {data.industry} • {data.size}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex" style={{ color: "#f59e0b" }}>
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className="material-symbols-outlined"
+                              style={{ fontSize: 18, fontVariationSettings: i < Math.round(data.rating) ? "'FILL' 1" : "'FILL' 0" }}>
+                              star
+                            </span>
+                          ))}
+                        </div>
+                        <span className="font-bold text-xl" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                          {data.rating}
+                        </span>
+                        <span className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+                          ({(data.reviewCount / 1000).toFixed(1)}k Reviews)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <button className="px-6 py-3 rounded-xl font-bold transition-all"
+                      style={{ background: "var(--surface-container-high)", color: "var(--on-surface)" }}>
+                      Follow
+                    </button>
+                    <button className="btn-primary-s px-8 py-3">View Jobs</button>
+                  </div>
+                </div>
+
+                {/* Tech stack */}
+                <div className="mt-8 pt-8 flex flex-wrap items-center gap-3"
+                  style={{ borderTop: "1px solid var(--surface-container)" }}>
+                  <span className="text-xs font-bold uppercase tracking-widest mr-2"
+                    style={{ color: "var(--on-surface-variant)" }}>Tech Stack</span>
+                  {data.techStack.map(t => (
+                    <div key={t} className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
+                      style={{ background: "var(--surface-container)" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: "var(--primary)" }}>code</span>
+                      {t}
+                    </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            {/* Verdict */}
-            <Card className="card-shadow border-accent/20 bg-accent/5">
-              <CardContent className="p-5 flex items-start gap-3">
-                <TrendingUp className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-heading font-semibold text-foreground mb-1">Verdict</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{data.verdict}</p>
+              {/* Bento grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Ratings */}
+                <div className="card-stitch p-8">
+                  <h3 className="text-xl font-bold mb-6" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                    Experience Breakdown
+                  </h3>
+                  <div className="space-y-6">
+                    {data.ratings.map(({ label, value }) => (
+                      <div key={label}>
+                        <div className="flex justify-between items-end mb-2">
+                          <span className="font-medium" style={{ color: "var(--on-surface-variant)" }}>{label}</span>
+                          <span className="font-bold" style={{ color: "var(--secondary)" }}>{value}</span>
+                        </div>
+                        <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: "var(--surface-container)" }}>
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${(value / 5) * 100}%`, background: "var(--primary)" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
-        {!data && !loading && (
-          <div className="text-center py-20">
-            <Building2 className="h-14 w-14 text-muted-foreground mx-auto mb-4 opacity-30" />
-            <p className="font-heading font-semibold text-foreground mb-2">Research any company</p>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              Get AI-powered insights on salary ranges, culture, interview process, pros & cons — for any Indian tech company
-            </p>
-          </div>
-        )}
+                {/* Salary ranges */}
+                <div className="card-stitch p-8">
+                  <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                    Salary Ranges
+                  </h3>
+                  <p className="text-sm mb-6" style={{ color: "var(--on-surface-variant)" }}>
+                    Market-leading compensation for Engineering
+                  </p>
+                  <div className="space-y-4">
+                    {data.salaryRanges.map(({ role, min, max }) => (
+                      <div key={role} className="flex items-center justify-between p-4 rounded-2xl"
+                        style={{ background: "var(--surface-container-low)" }}>
+                        <div>
+                          <span className="block text-xs font-bold uppercase" style={{ color: "var(--on-surface-variant)" }}>{role}</span>
+                          <span className="text-2xl font-bold" style={{ fontFamily: "var(--font-headline)", color: "var(--primary)" }}>
+                            ₹ {min}—{max} <span className="text-sm">LPA</span>
+                          </span>
+                        </div>
+                        <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>trending_up</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pros & Cons */}
+                <div className="card-stitch p-8">
+                  <h3 className="text-xl font-bold mb-6" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                    Pros & Cons
+                  </h3>
+                  <div className="grid grid-cols-2 gap-8">
+                    <div>
+                      <h4 className="text-sm font-bold flex items-center gap-2 mb-4" style={{ color: "var(--secondary)" }}>
+                        <span className="material-symbols-outlined mat-fill" style={{ fontSize: 18 }}>thumb_up</span>
+                        ADVANTAGES
+                      </h4>
+                      <ul className="space-y-3">
+                        {data.pros.map((p, i) => (
+                          <li key={i} className="flex gap-3 text-sm leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>
+                            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 14, color: "var(--secondary)" }}>add</span>
+                            {p}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold flex items-center gap-2 mb-4" style={{ color: "var(--error)" }}>
+                        <span className="material-symbols-outlined mat-fill" style={{ fontSize: 18 }}>thumb_down</span>
+                        CHALLENGES
+                      </h4>
+                      <ul className="space-y-3">
+                        {data.cons.map((c, i) => (
+                          <li key={i} className="flex gap-3 text-sm leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>
+                            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 14, color: "var(--error)" }}>remove</span>
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interview process */}
+                <div className="card-stitch p-8">
+                  <h3 className="text-xl font-bold mb-6" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                    Interview Process
+                  </h3>
+                  <div className="flex flex-col gap-6">
+                    {data.interviewProcess.map(({ step, desc }, i) => (
+                      <div key={i} className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
+                          {i + 1}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm" style={{ color: "var(--on-surface)" }}>{step}</h5>
+                          <p className="text-xs mt-0.5" style={{ color: "var(--on-surface-variant)" }}>{desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 p-4 rounded-2xl flex items-center justify-between"
+                    style={{ background: "#f0fdf4" }}>
+                    <span className="text-sm font-bold" style={{ color: "#166534" }}>Difficulty: Hard</span>
+                    <button className="text-sm font-bold flex items-center gap-1" style={{ color: "var(--primary)" }}>
+                      Read Experiences
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Verdict */}
+              <div className="card-stitch p-6" style={{ borderLeft: "4px solid var(--primary)" }}>
+                <p className="font-bold mb-1" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>AI Verdict</p>
+                <p className="text-sm leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>{data.verdict}</p>
+              </div>
+            </div>
+          )}
+
+          {!data && !loading && (
+            <div className="text-center py-20">
+              <span className="material-symbols-outlined" style={{ fontSize: 64, color: "var(--outline-variant)" }}>corporate_fare</span>
+              <p className="font-bold text-xl mt-4" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                Research any company
+              </p>
+              <p className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>
+                Get salary data, culture insights, and interview prep for Indian tech companies
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

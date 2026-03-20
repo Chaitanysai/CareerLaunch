@@ -3,15 +3,15 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { CityProvider } from "@/hooks/useCity";
+import { ThemeProvider } from "@/hooks/useTheme";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ChatBubble from "@/components/advisor/ChatBubble";
 
 // Core pages
 import Landing from "./pages/Landing";
-import IndexPage from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import JobBoard from "./pages/JobBoard";
@@ -33,15 +33,19 @@ import CareerRoadmap from "./pages/CareerRoadmap";
 import LinkedInOptimizer from "./pages/LinkedInOptimizer";
 import JobTracker from "./pages/JobTracker";
 
+// Resume Matcher (Index)
+import ResumeMatcher from "./pages/Index";
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
 const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
+  <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface)" }}>
     <div className="flex flex-col items-center gap-3">
-      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm text-muted-foreground">Loading RoleMatch...</p>
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+        style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
+      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>Loading RoleMatch...</p>
     </div>
   </div>
 );
@@ -70,7 +74,7 @@ const AppRoutes = () => {
 
         {/* Main */}
         <Route path="/dashboard" element={<DashPage title="Dashboard"><Dashboard /></DashPage>} />
-        <Route path="/match" element={<DashPage title="Resume Matcher"><IndexPage /></DashPage>} />
+        <Route path="/match" element={<DashPage title="Resume Matcher"><ResumeMatcher /></DashPage>} />
         <Route path="/jobs" element={<DashPage title="Job Board"><JobBoard /></DashPage>} />
         <Route path="/saved" element={<DashPage title="Saved Jobs"><SavedJobs /></DashPage>} />
         <Route path="/profile" element={<DashPage title="My Profile"><Profile /></DashPage>} />
@@ -98,19 +102,21 @@ const AppRoutes = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <NextThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <CityProvider>
-              <AppRoutes />
+              <ThemeProvider>
+                <AppRoutes />
+              </ThemeProvider>
             </CityProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </ThemeProvider>
+    </NextThemeProvider>
   </QueryClientProvider>
 );
 

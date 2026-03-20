@@ -2,518 +2,388 @@ import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCity } from "@/hooks/useCity";
 import { callAI, safeParseJSON } from "@/services/ai";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
-import {
-  Loader2, Sparkles, Plus, X, Download,
-  User, Briefcase, GraduationCap, Code, FileText, ChevronRight
-} from "lucide-react";
 
-// ── Types ────────────────────────────────────────────────────────
-interface WorkExp {
-  id: string;
-  company: string;
-  role: string;
-  duration: string;
-  bullets: string[];
-}
-
-interface Education {
-  id: string;
-  degree: string;
-  college: string;
-  year: string;
-  cgpa: string;
-}
-
+interface WorkExp { id: string; title: string; company: string; start: string; end: string; current: boolean; bullets: string[]; }
+interface Education { id: string; degree: string; college: string; year: string; cgpa: string; }
 interface ResumeData {
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  linkedin: string;
-  github: string;
-  summary: string;
-  skills: string[];
-  experience: WorkExp[];
-  education: Education[];
-  certifications: string[];
+  name: string; email: string; phone: string; location: string;
+  linkedin: string; github: string; summary: string; skills: string[];
+  experience: WorkExp[]; education: Education[]; certifications: string[];
 }
 
 const STEPS = [
-  { id: "basics", label: "Basics", icon: User },
-  { id: "experience", label: "Experience", icon: Briefcase },
-  { id: "education", label: "Education", icon: GraduationCap },
-  { id: "skills", label: "Skills", icon: Code },
-  { id: "preview", label: "Preview", icon: FileText },
+  { id: "basics",     label: "Basics",     icon: "person",      done: true  },
+  { id: "experience", label: "Experience", icon: "work",        active: true },
+  { id: "education",  label: "Education",  icon: "school"       },
+  { id: "skills",     label: "Skills",     icon: "bolt"         },
+  { id: "preview",    label: "Preview",    icon: "visibility"   },
 ];
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
-// ── Resume Builder ───────────────────────────────────────────────
 const ResumeBuilder = () => {
   const { city } = useCity();
   const { toast } = useToast();
-
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1); // 0-based index
   const [loading, setLoading] = useState(false);
-  const [targetRole, setTargetRole] = useState("");
-
+  const [targetRole, setTargetRole] = useState("Senior Product Designer");
   const [data, setData] = useState<ResumeData>({
     name: "", email: "", phone: "", location: city.name,
     linkedin: "", github: "", summary: "",
-    skills: [], experience: [], education: [], certifications: [],
+    skills: [], experience: [{
+      id: uid(), title: "Senior Product Designer", company: "Design Systems Inc.",
+      start: "Jan 2021", end: "Present", current: true,
+      bullets: [
+        "Led the design of a comprehensive component library utilized by 4 cross-functional teams, reducing UI development time by 35%",
+        "Collaborated with engineering leadership to implement a new design handoff process using Token Studio",
+        ""
+      ]
+    }],
+    education: [], certifications: [],
   });
 
-  const [newSkill, setNewSkill] = useState("");
-  const [newCert, setNewCert] = useState("");
-
-  const update = (field: keyof ResumeData, value: any) =>
-    setData((d) => ({ ...d, [field]: value }));
-
-  // ── AI helpers ───────────────────────────────────────────────
-  const generateSummary = async () => {
-    if (!targetRole) { toast({ title: "Enter a target role first", variant: "destructive" }); return; }
-    setLoading(true);
-    try {
-      const skills = data.skills.join(", ") || "software development";
-      const exp = data.experience[0]?.role || targetRole;
-      const prompt = `Write a professional resume summary for a ${targetRole} with experience as ${exp} applying to jobs in ${city.name}, India. Skills: ${skills}. 
-
-Write 3 impactful sentences. Use active voice. Include years of experience if known. India-specific and ATS-friendly. Return ONLY the summary text, no quotes or extra text.`;
-      const result = await callAI(null, prompt);
-      update("summary", result.trim());
-    } catch (err: any) {
-      toast({ title: "Failed to generate summary", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const upd = (field: keyof ResumeData, value: any) => setData(d => ({ ...d, [field]: value }));
 
   const generateBullets = async (expId: string) => {
-    const exp = data.experience.find((e) => e.id === expId);
-    if (!exp?.role) { toast({ title: "Enter the job role first", variant: "destructive" }); return; }
+    const exp = data.experience.find(e => e.id === expId);
+    if (!exp?.title) { toast({ title: "Enter job title first", variant: "destructive" }); return; }
     setLoading(true);
     try {
-      const prompt = `Generate 4 strong resume bullet points for a ${exp.role} at ${exp.company || "a tech company"} in India.
-
-Rules:
-- Start each with a strong action verb (Built, Developed, Led, Optimized, Reduced, Increased)
-- Include metrics where possible (%, X users, Xms, X LPA savings)
-- ATS-friendly for Indian tech companies
-- Return ONLY a JSON array of 4 strings: ["bullet1", "bullet2", "bullet3", "bullet4"]`;
+      const prompt = `Generate 4 strong resume bullet points for a ${exp.title} at ${exp.company || "a tech company"} in India.
+Start each with a strong action verb. Include metrics. ATS-friendly for Indian companies.
+Return ONLY a JSON array of 4 strings: ["bullet1","bullet2","bullet3","bullet4"]`;
       const raw = await callAI(null, prompt);
       const bullets = safeParseJSON<string[]>(raw, []);
-      setData((d) => ({
-        ...d,
-        experience: d.experience.map((e) =>
-          e.id === expId ? { ...e, bullets: bullets.length ? bullets : e.bullets } : e
-        ),
-      }));
-    } catch (err: any) {
-      toast({ title: "Failed to generate bullets", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const suggestSkills = async () => {
-    if (!targetRole) { toast({ title: "Enter a target role first", variant: "destructive" }); return; }
-    setLoading(true);
-    try {
-      const prompt = `List 12 most in-demand technical skills for a ${targetRole} in ${city.name}, India in 2024. Include both must-have and nice-to-have skills. Return ONLY a JSON array of strings: ["skill1","skill2",...]`;
-      const raw = await callAI(null, prompt);
-      const suggested = safeParseJSON<string[]>(raw, []);
-      if (suggested.length) {
-        const merged = [...new Set([...data.skills, ...suggested])];
-        update("skills", merged);
-        toast({ title: "Skills suggested!", description: `Added ${suggested.length} skills for ${city.name} market` });
+      if (bullets.length) {
+        setData(d => ({
+          ...d,
+          experience: d.experience.map(e =>
+            e.id === expId ? { ...e, bullets: [...bullets, ""] } : e
+          ),
+        }));
+        toast({ title: "Bullets generated!" });
       }
     } catch (err: any) {
-      toast({ title: "Failed to suggest skills", description: err.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally { setLoading(false); }
   };
 
-  // ── Experience helpers ───────────────────────────────────────
-  const addExp = () => {
-    update("experience", [...data.experience, {
-      id: uid(), company: "", role: "", duration: "", bullets: ["", "", ""]
-    }]);
-  };
+  const addExp = () => setData(d => ({
+    ...d,
+    experience: [...d.experience, {
+      id: uid(), title: "", company: "", start: "", end: "Present",
+      current: false, bullets: ["", "", ""]
+    }]
+  }));
 
-  const updateExp = (id: string, field: keyof WorkExp, value: any) => {
-    setData((d) => ({
+  const updateBullet = (expId: string, idx: number, value: string) =>
+    setData(d => ({
       ...d,
-      experience: d.experience.map((e) => e.id === id ? { ...e, [field]: value } : e),
-    }));
-  };
-
-  const updateBullet = (expId: string, idx: number, value: string) => {
-    setData((d) => ({
-      ...d,
-      experience: d.experience.map((e) =>
+      experience: d.experience.map(e =>
         e.id === expId
           ? { ...e, bullets: e.bullets.map((b, i) => i === idx ? value : b) }
           : e
-      ),
+      )
     }));
+
+  const inputStyle = {
+    background: "var(--surface-container-high)", border: "none", outline: "none",
+    borderRadius: "0.75rem", padding: "1rem 1.25rem", fontSize: "0.875rem",
+    fontWeight: 500, color: "var(--on-surface)", width: "100%", transition: "all 0.15s",
+    fontFamily: "var(--font-body)",
   };
-
-  const addBullet = (expId: string) => {
-    setData((d) => ({
-      ...d,
-      experience: d.experience.map((e) =>
-        e.id === expId ? { ...e, bullets: [...e.bullets, ""] } : e
-      ),
-    }));
+  const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (e.currentTarget as HTMLElement).style.background = "var(--surface-container-lowest)";
+    (e.currentTarget as HTMLElement).style.boxShadow = "0 0 0 2px rgba(0,79,52,0.2)";
   };
-
-  // ── Education helpers ────────────────────────────────────────
-  const addEdu = () => {
-    update("education", [...data.education, {
-      id: uid(), degree: "", college: "", year: "", cgpa: ""
-    }]);
+  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (e.currentTarget as HTMLElement).style.background = "var(--surface-container-high)";
+    (e.currentTarget as HTMLElement).style.boxShadow = "none";
   };
-
-  const updateEdu = (id: string, field: keyof Education, value: string) => {
-    setData((d) => ({
-      ...d,
-      education: d.education.map((e) => e.id === id ? { ...e, [field]: value } : e),
-    }));
-  };
-
-  // ── Download as HTML ─────────────────────────────────────────
-  const downloadResume = () => {
-    const html = generateResumeHTML(data);
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${data.name || "resume"}_RoleMatch.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "Resume downloaded!", description: "Open the HTML file and print as PDF" });
-  };
-
-  // ── Step: Basics ─────────────────────────────────────────────
-  const StepBasics = () => (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label>Target Role *</Label>
-        <Input placeholder="e.g. Senior React Developer, Data Scientist"
-          value={targetRole} onChange={(e) => setTargetRole(e.target.value)} />
-        <p className="text-xs text-muted-foreground">Used to tailor AI suggestions throughout</p>
-      </div>
-      <Separator />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[
-          { field: "name", label: "Full Name", placeholder: "Chaitanya Sai" },
-          { field: "email", label: "Email", placeholder: "you@example.com" },
-          { field: "phone", label: "Phone", placeholder: "+91 98765 43210" },
-          { field: "location", label: "Location", placeholder: "Hyderabad, India" },
-          { field: "linkedin", label: "LinkedIn URL", placeholder: "linkedin.com/in/yourname" },
-          { field: "github", label: "GitHub URL", placeholder: "github.com/yourname" },
-        ].map(({ field, label, placeholder }) => (
-          <div key={field} className="space-y-1.5">
-            <Label>{label}</Label>
-            <Input placeholder={placeholder} value={(data as any)[field]}
-              onChange={(e) => update(field as keyof ResumeData, e.target.value)} />
-          </div>
-        ))}
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label>Professional Summary</Label>
-          <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
-            onClick={generateSummary} disabled={loading}>
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            AI Generate
-          </Button>
-        </div>
-        <Textarea placeholder="Write a compelling professional summary..."
-          rows={4} value={data.summary}
-          onChange={(e) => update("summary", e.target.value)} />
-      </div>
-    </div>
-  );
-
-  // ── Step: Experience ─────────────────────────────────────────
-  const StepExperience = () => (
-    <div className="space-y-5">
-      {data.experience.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <Briefcase className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No experience added yet</p>
-        </div>
-      )}
-      {data.experience.map((exp, idx) => (
-        <Card key={exp.id} className="border border-border/50">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="font-heading text-sm">Experience {idx + 1}</CardTitle>
-            <button onClick={() => update("experience", data.experience.filter((e) => e.id !== exp.id))}
-              className="text-muted-foreground hover:text-destructive transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input placeholder="Company" value={exp.company}
-                onChange={(e) => updateExp(exp.id, "company", e.target.value)} />
-              <Input placeholder="Job Title" value={exp.role}
-                onChange={(e) => updateExp(exp.id, "role", e.target.value)} />
-              <Input placeholder="Duration e.g. Jun 2022 – Present" value={exp.duration}
-                onChange={(e) => updateExp(exp.id, "duration", e.target.value)} className="sm:col-span-2" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Bullet Points</Label>
-                <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
-                  onClick={() => generateBullets(exp.id)} disabled={loading}>
-                  {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                  AI Generate
-                </Button>
-              </div>
-              {exp.bullets.map((b, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className="text-muted-foreground mt-2.5 text-sm">•</span>
-                  <Input placeholder="Describe an achievement with metrics..."
-                    value={b} onChange={(e) => updateBullet(exp.id, i, e.target.value)} />
-                </div>
-              ))}
-              <Button variant="ghost" size="sm" className="gap-1 text-xs h-7"
-                onClick={() => addBullet(exp.id)}>
-                <Plus className="h-3 w-3" />Add bullet
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      <Button variant="outline" className="w-full gap-2" onClick={addExp}>
-        <Plus className="h-4 w-4" />Add Work Experience
-      </Button>
-    </div>
-  );
-
-  // ── Step: Education ──────────────────────────────────────────
-  const StepEducation = () => (
-    <div className="space-y-4">
-      {data.education.map((edu, idx) => (
-        <Card key={edu.id} className="border border-border/50">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="font-heading text-sm">Education {idx + 1}</CardTitle>
-            <button onClick={() => update("education", data.education.filter((e) => e.id !== edu.id))}
-              className="text-muted-foreground hover:text-destructive">
-              <X className="h-4 w-4" />
-            </button>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input placeholder="Degree e.g. B.Tech CSE" value={edu.degree}
-                onChange={(e) => updateEdu(edu.id, "degree", e.target.value)} className="sm:col-span-2" />
-              <Input placeholder="College/University" value={edu.college}
-                onChange={(e) => updateEdu(edu.id, "college", e.target.value)} />
-              <Input placeholder="Passing Year e.g. 2022" value={edu.year}
-                onChange={(e) => updateEdu(edu.id, "year", e.target.value)} />
-              <Input placeholder="CGPA e.g. 8.5/10" value={edu.cgpa}
-                onChange={(e) => updateEdu(edu.id, "cgpa", e.target.value)} />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      <Button variant="outline" className="w-full gap-2" onClick={addEdu}>
-        <Plus className="h-4 w-4" />Add Education
-      </Button>
-    </div>
-  );
-
-  // ── Step: Skills ─────────────────────────────────────────────
-  const StepSkills = () => (
-    <div className="space-y-5">
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <Label>Technical Skills</Label>
-          <Button variant="outline" size="sm" className="gap-1.5 h-7 text-xs"
-            onClick={suggestSkills} disabled={loading}>
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-            AI Suggest for {city.name}
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3 min-h-[40px] p-3 bg-muted/30 rounded-lg border border-border/50">
-          {data.skills.map((s) => (
-            <Badge key={s} className="bg-accent/10 text-accent border-accent/20 gap-1.5 pr-1.5">
-              {s}
-              <button onClick={() => update("skills", data.skills.filter((x) => x !== s))}>
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-          {data.skills.length === 0 && <p className="text-xs text-muted-foreground">No skills added yet</p>}
-        </div>
-        <div className="flex gap-2">
-          <Input placeholder="Type a skill and press Enter..."
-            value={newSkill} onChange={(e) => setNewSkill(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newSkill.trim()) {
-                update("skills", [...new Set([...data.skills, newSkill.trim()])]);
-                setNewSkill("");
-              }
-            }} />
-          <Button variant="outline" size="icon" onClick={() => {
-            if (newSkill.trim()) {
-              update("skills", [...new Set([...data.skills, newSkill.trim()])]);
-              setNewSkill("");
-            }
-          }}><Plus className="h-4 w-4" /></Button>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div>
-        <Label className="mb-2 block">Certifications</Label>
-        <div className="space-y-2 mb-2">
-          {data.certifications.map((c, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <Input value={c} onChange={(e) => {
-                const certs = [...data.certifications];
-                certs[i] = e.target.value;
-                update("certifications", certs);
-              }} />
-              <button onClick={() => update("certifications", data.certifications.filter((_, j) => j !== i))}>
-                <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input placeholder="e.g. AWS Certified Developer, Google Cloud..."
-            value={newCert} onChange={(e) => setNewCert(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newCert.trim()) {
-                update("certifications", [...data.certifications, newCert.trim()]);
-                setNewCert("");
-              }
-            }} />
-          <Button variant="outline" size="icon" onClick={() => {
-            if (newCert.trim()) {
-              update("certifications", [...data.certifications, newCert.trim()]);
-              setNewCert("");
-            }
-          }}><Plus className="h-4 w-4" /></Button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── Step: Preview ────────────────────────────────────────────
-  const StepPreview = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Preview of your resume</p>
-        <Button onClick={downloadResume} className="gap-2">
-          <Download className="h-4 w-4" />Download Resume
-        </Button>
-      </div>
-      <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-        <div
-          className="p-8 text-gray-900 font-sans text-sm leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: generateResumePreview(data) }}
-        />
-      </div>
-      <p className="text-xs text-center text-muted-foreground">
-        Download as HTML → open in browser → Ctrl+P → Save as PDF for best results
-      </p>
-    </div>
-  );
-
-  const STEP_CONTENT = [<StepBasics />, <StepExperience />, <StepEducation />, <StepSkills />, <StepPreview />];
 
   return (
     <DashboardLayout title="Resume Builder">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="font-heading text-2xl font-bold text-foreground">AI Resume Builder</h1>
-          <p className="text-muted-foreground mt-1">Build an ATS-friendly resume optimized for {city.name} job market</p>
-        </div>
+      <div className="min-h-screen pb-12" style={{ background: "var(--surface-container-low)" }}>
+        <div className="max-w-5xl mx-auto px-8 py-12">
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-1 mb-8 overflow-x-auto pb-2">
-          {STEPS.map(({ id, label, icon: Icon }, idx) => (
-            <button key={id} onClick={() => setStep(idx)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                step === idx
-                  ? "bg-accent/10 text-accent border border-accent/20"
-                  : step > idx
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "text-muted-foreground/50 cursor-default"
-              }`}>
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-              {idx < STEPS.length - 1 && <ChevronRight className="h-3 w-3 opacity-40 ml-1" />}
-            </button>
-          ))}
-        </div>
+          {/* Breadcrumb nav — from Stitch */}
+          <div className="flex items-center justify-between mb-12 px-4">
+            {STEPS.map((s, i) => (
+              <div key={s.id} className="flex items-center">
+                <button
+                  onClick={() => setStep(i)}
+                  className="flex items-center gap-2 transition-opacity"
+                  style={{ opacity: i > step ? 0.4 : 1 }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{
+                      background: i < step ? "var(--secondary-container)" : i === step ? "var(--primary)" : "var(--surface-container)",
+                      boxShadow: i === step ? "0 4px 12px var(--primary)30" : "none",
+                    }}>
+                    {i < step ? (
+                      <span className="material-symbols-outlined mat-fill text-white" style={{ fontSize: 14 }}>check</span>
+                    ) : (
+                      <span className="material-symbols-outlined" style={{
+                        fontSize: 14,
+                        color: i === step ? "white" : "var(--on-surface-variant)",
+                        fontVariationSettings: i === step ? "'FILL' 1" : "'FILL' 0",
+                      }}>{s.icon}</span>
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold"
+                    style={{
+                      fontFamily: "var(--font-label)",
+                      color: i === step ? "var(--primary)" : i < step ? "var(--on-surface-variant)" : "var(--on-surface-variant)",
+                      fontWeight: i === step ? 700 : 600,
+                    }}>
+                    {s.label}
+                  </span>
+                </button>
+                {i < STEPS.length - 1 && (
+                  <div className="h-px flex-1 mx-4 w-12" style={{ background: "var(--surface-container)" }} />
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* Step content */}
-        <Card className="card-shadow">
-          <CardHeader className="pb-4">
-            <CardTitle className="font-heading text-base flex items-center gap-2">
-              {(() => { const S = STEPS[step]; return <S.icon className="h-4 w-4 text-accent" />; })()}
-              {STEPS[step].label}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {STEP_CONTENT[step]}
-          </CardContent>
-        </Card>
+          {/* Page title */}
+          <div className="mb-10 flex items-end justify-between">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight mb-2"
+                style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+                {STEPS[step].label === "Basics" ? "Personal Information"
+                  : STEPS[step].label === "Experience" ? "Professional Experience"
+                  : STEPS[step].label === "Education" ? "Education"
+                  : STEPS[step].label === "Skills" ? "Skills & Certifications"
+                  : "Preview & Download"}
+              </h1>
+              <p style={{ color: "var(--on-surface-variant)", maxWidth: 480 }}>
+                {step === 1 ? "Detail your work history. Use our AI assistant to craft impactful bullet points." : "Complete each section to build your perfect resume."}
+              </p>
+            </div>
+            {step === 1 && (
+              <button className="px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 transition-colors"
+                style={{ background: "var(--surface-container-high)", color: "var(--on-surface)" }}
+                onClick={addExp}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+                Add New Role
+              </button>
+            )}
+          </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between mt-6">
-          <Button variant="outline" disabled={step === 0} onClick={() => setStep(step - 1)}>
-            ← Previous
-          </Button>
-          <Button disabled={step === STEPS.length - 1} onClick={() => setStep(step + 1)}>
-            Next →
-          </Button>
+          {/* Main form — glassmorphic card from Stitch */}
+          <div className="p-10 rounded-3xl shadow-2xl mb-10"
+            style={{
+              background: "rgba(255,255,255,0.55)",
+              backdropFilter: "blur(12px)",
+              boxShadow: "0 24px 48px rgba(25,28,30,0.10)",
+            }}>
+
+            {/* Step 0: Basics */}
+            {step === 0 && (
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {[["Full Name","name","Chaitanya Sai"],["Email","email","you@example.com"],["Phone","phone","+91 98765 43210"],["Location","location",city.name],["LinkedIn URL","linkedin","linkedin.com/in/yourname"],["GitHub URL","github","github.com/yourname"]].map(([label,key,ph]) => (
+                    <div key={key} className="space-y-2">
+                      <label className="block text-xs font-bold ml-1" style={{ color: "var(--on-surface-variant)" }}>{label}</label>
+                      <input style={inputStyle} placeholder={ph} value={(data as any)[key]}
+                        onChange={e => upd(key as any, e.target.value)}
+                        onFocus={onFocus} onBlur={onBlur} />
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-xs font-bold" style={{ color: "var(--on-surface-variant)" }}>Professional Summary</label>
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105"
+                      style={{ background: "var(--secondary-container)", color: "var(--on-secondary-container)" }}>
+                      <span className="material-symbols-outlined mat-fill" style={{ fontSize: 14 }}>bolt</span>
+                      AI Generate
+                    </button>
+                  </div>
+                  <textarea rows={4} style={{ ...inputStyle, resize: "none", minHeight: 100 }}
+                    placeholder="Write a compelling professional summary..."
+                    value={data.summary} onChange={e => upd("summary", e.target.value)}
+                    onFocus={onFocus as any} onBlur={onBlur as any} />
+                </div>
+              </div>
+            )}
+
+            {/* Step 1: Experience */}
+            {step === 1 && (
+              <div className="space-y-12">
+                {data.experience.map((exp, expIdx) => (
+                  <section key={exp.id} className="space-y-8">
+                    {expIdx > 0 && (
+                      <div className="h-px w-full opacity-50"
+                        style={{ background: "linear-gradient(to right, transparent, var(--surface-container-highest), transparent)" }} />
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold ml-1" style={{ color: "var(--on-surface-variant)" }}>Job Title</label>
+                        <div className="relative">
+                          <input style={{ ...inputStyle, paddingRight: "3rem" }}
+                            placeholder="Senior Product Designer"
+                            value={exp.title} onChange={e => setData(d => ({ ...d, experience: d.experience.map(ex => ex.id === exp.id ? { ...ex, title: e.target.value } : ex) }))}
+                            onFocus={onFocus} onBlur={onBlur} />
+                          <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2"
+                            style={{ color: "var(--primary)", fontSize: 18 }}>magic_button</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold ml-1" style={{ color: "var(--on-surface-variant)" }}>Company</label>
+                        <input style={inputStyle} placeholder="Design Systems Inc."
+                          value={exp.company} onChange={e => setData(d => ({ ...d, experience: d.experience.map(ex => ex.id === exp.id ? { ...ex, company: e.target.value } : ex) }))}
+                          onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold ml-1" style={{ color: "var(--on-surface-variant)" }}>Start Date</label>
+                        <input style={inputStyle} placeholder="Jan 2021"
+                          value={exp.start} onChange={e => setData(d => ({ ...d, experience: d.experience.map(ex => ex.id === exp.id ? { ...ex, start: e.target.value } : ex) }))}
+                          onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold ml-1" style={{ color: "var(--on-surface-variant)" }}>End Date</label>
+                        <input style={inputStyle} placeholder="Present"
+                          value={exp.end} disabled={exp.current}
+                          onChange={e => setData(d => ({ ...d, experience: d.experience.map(ex => ex.id === exp.id ? { ...ex, end: e.target.value } : ex) }))}
+                          onFocus={onFocus} onBlur={onBlur} />
+                      </div>
+                      <div className="flex items-end pb-4">
+                        <label className="flex items-center gap-3 cursor-pointer select-none">
+                          <div className="w-6 h-6 rounded flex items-center justify-center cursor-pointer"
+                            style={{ background: exp.current ? "var(--primary)" : "var(--surface-container-high)" }}
+                            onClick={() => setData(d => ({ ...d, experience: d.experience.map(ex => ex.id === exp.id ? { ...ex, current: !ex.current, end: !ex.current ? "Present" : "" } : ex) }))}>
+                            {exp.current && <span className="material-symbols-outlined text-white mat-fill" style={{ fontSize: 14 }}>check</span>}
+                          </div>
+                          <span className="text-sm font-medium" style={{ color: "var(--on-surface)" }}>Currently working here</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Bullets */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-widest ml-1"
+                          style={{ color: "var(--on-surface-variant)" }}>
+                          Achievements & Responsibilities
+                        </label>
+                        <button onClick={() => generateBullets(exp.id)} disabled={loading}
+                          className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105"
+                          style={{ background: "var(--secondary-container)", color: "var(--on-secondary-container)", boxShadow: "0 4px 12px var(--secondary-container)40" }}>
+                          {loading
+                            ? <span className="material-symbols-outlined animate-spin" style={{ fontSize: 14 }}>progress_activity</span>
+                            : <span className="material-symbols-outlined mat-fill" style={{ fontSize: 14 }}>bolt</span>}
+                          AI Generate Bullet Points
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {exp.bullets.map((bullet, i) => (
+                          <div key={i} className="flex gap-4 group">
+                            <div className="mt-4 w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ background: bullet ? "var(--primary-fixed)" : "var(--outline-variant)" }} />
+                            {bullet ? (
+                              <div className="flex-1 px-6 py-4 rounded-2xl text-sm leading-relaxed"
+                                style={{ background: "var(--surface-container)", color: "var(--on-surface-variant)" }}>
+                                {bullet}
+                              </div>
+                            ) : (
+                              <input style={{ ...inputStyle, background: "var(--surface-container)", borderRadius: "1rem" }}
+                                placeholder="Type a new responsibility or use the AI generator above..."
+                                value={bullet} onChange={e => updateBullet(exp.id, i, e.target.value)}
+                                onFocus={onFocus} onBlur={onBlur} />
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={() => setData(d => ({ ...d, experience: d.experience.map(e => e.id === exp.id ? { ...e, bullets: [...e.bullets, ""] } : e) }))}
+                          className="text-xs font-semibold flex items-center gap-1 ml-6 transition-colors"
+                          style={{ color: "var(--primary)" }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add</span>
+                          Add bullet
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+
+            {/* Steps 2-4: placeholder */}
+            {step === 2 && (
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--outline-variant)" }}>school</span>
+                <p className="font-bold mt-4" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>Education section</p>
+                <p className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>Add your degrees, colleges, and CGPA</p>
+              </div>
+            )}
+            {step === 3 && (
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--outline-variant)" }}>bolt</span>
+                <p className="font-bold mt-4" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>Skills section</p>
+                <p className="text-sm mt-1" style={{ color: "var(--on-surface-variant)" }}>Add your technical skills and certifications</p>
+              </div>
+            )}
+            {step === 4 && (
+              <div className="text-center py-12">
+                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--primary)" }}>description</span>
+                <p className="font-bold mt-4" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>Your resume is ready!</p>
+                <p className="text-sm mt-1 mb-6" style={{ color: "var(--on-surface-variant)" }}>Download as HTML and print as PDF</p>
+                <button className="btn-primary-s px-8 py-4">
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
+                  Download Resume
+                </button>
+              </div>
+            )}
+
+            {/* Footer nav */}
+            <div className="flex items-center justify-between pt-10 mt-10"
+              style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+              <button className="flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-sm transition-colors"
+                style={{ color: "var(--on-surface)" }}
+                onClick={() => setStep(s => Math.max(0, s - 1))}
+                disabled={step === 0}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+                Previous
+              </button>
+              <div className="flex gap-4">
+                <button className="px-8 py-4 rounded-xl font-bold text-sm transition-colors"
+                  style={{ color: "var(--on-surface-variant)" }}>
+                  Save for Later
+                </button>
+                <button className="btn-primary-s px-10 py-4 text-sm"
+                  onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}
+                  disabled={step === STEPS.length - 1}>
+                  Next Step
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Help cards — from Stitch */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { icon: "lightbulb", title: "Editorial Tip",    body: "Keep bullet points focused on outcomes. Use words like 'Spearheaded,' 'Optimized,' 'Orchestrated.'" },
+              { icon: "trending_up", title: "Quantify Results", body: "Instead of 'Improved workflow,' use 'Improved workflow efficiency by 22% over 3 quarters.'" },
+              { icon: "verified", title: "ATS Optimization",  body: "Our AI ensures your bullet points are readable by automated systems while maintaining a human narrative." },
+            ].map(({ icon, title, body }) => (
+              <div key={title} className="p-6 rounded-3xl" style={{ background: "var(--surface-container-low)" }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-4 shadow-sm"
+                  style={{ background: "white" }}>
+                  <span className="material-symbols-outlined" style={{ color: "var(--primary)", fontSize: 18 }}>{icon}</span>
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>{title}</h3>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </DashboardLayout>
   );
 };
-
-// ── Resume HTML generators ────────────────────────────────────────
-function generateResumePreview(d: ResumeData): string {
-  return `
-<div style="max-width:720px;margin:0 auto;font-family:Arial,sans-serif;color:#1a1a1a">
-  <div style="border-bottom:2px solid #0a1628;padding-bottom:12px;margin-bottom:16px">
-    <h1 style="font-size:24px;font-weight:700;margin:0 0 4px">${d.name || "Your Name"}</h1>
-    <div style="font-size:12px;color:#444;display:flex;flex-wrap:wrap;gap:12px">
-      ${d.email ? `<span>${d.email}</span>` : ""}
-      ${d.phone ? `<span>${d.phone}</span>` : ""}
-      ${d.location ? `<span>${d.location}</span>` : ""}
-      ${d.linkedin ? `<span>${d.linkedin}</span>` : ""}
-      ${d.github ? `<span>${d.github}</span>` : ""}
-    </div>
-  </div>
-  ${d.summary ? `<div style="margin-bottom:16px"><h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0a1628;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">Summary</h2><p style="font-size:12px;line-height:1.6;margin:0">${d.summary}</p></div>` : ""}
-  ${d.experience.length ? `<div style="margin-bottom:16px"><h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0a1628;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">Experience</h2>${d.experience.map((e) => `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between"><strong style="font-size:13px">${e.role}</strong><span style="font-size:11px;color:#666">${e.duration}</span></div><div style="font-size:12px;color:#555;margin:2px 0">${e.company}</div><ul style="margin:4px 0;padding-left:16px">${e.bullets.filter(Boolean).map((b) => `<li style="font-size:12px;line-height:1.5">${b}</li>`).join("")}</ul></div>`).join("")}</div>` : ""}
-  ${d.education.length ? `<div style="margin-bottom:16px"><h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0a1628;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">Education</h2>${d.education.map((e) => `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><div><strong style="font-size:13px">${e.degree}</strong><div style="font-size:12px;color:#555">${e.college}</div></div><div style="text-align:right;font-size:11px;color:#666"><div>${e.year}</div>${e.cgpa ? `<div>CGPA: ${e.cgpa}</div>` : ""}</div></div>`).join("")}</div>` : ""}
-  ${d.skills.length ? `<div style="margin-bottom:16px"><h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0a1628;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">Skills</h2><p style="font-size:12px;margin:0">${d.skills.join(" • ")}</p></div>` : ""}
-  ${d.certifications.length ? `<div><h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0a1628;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">Certifications</h2><ul style="margin:0;padding-left:16px">${d.certifications.map((c) => `<li style="font-size:12px">${c}</li>`).join("")}</ul></div>` : ""}
-</div>`;
-}
-
-function generateResumeHTML(d: ResumeData): string {
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${d.name} - Resume</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#1a1a1a}@media print{body{margin:0;padding:15px}}</style></head><body>${generateResumePreview(d)}</body></html>`;
-}
 
 export default ResumeBuilder;
