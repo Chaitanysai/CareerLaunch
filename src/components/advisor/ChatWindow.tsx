@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { Loader2, Send, Bot, User, Sparkles, AlertCircle } from "lucide-react";
 import { streamChatWithAdvisor, ChatMessage } from "@/services/groq";
 import { useCity } from "@/hooks/useCity";
@@ -25,7 +25,7 @@ const ChatWindow = ({ skills = [], jobTitle = "", compact = false }: ChatWindowP
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
-      content: `Hi! I'm your RoleMatch AI Career Advisor, specialized for the ${city.name} job market${jobTitle ? ` — especially ${jobTitle} roles` : ""}.\n\nAsk me anything about careers, salaries, interviews, or skills!`,
+      content: `Hi! I'm your CareerLaunch AI Career Advisor, specialized for the ${city.name} job market${jobTitle ? ` — especially ${jobTitle} roles` : ""}.\n\nAsk me anything about careers, salaries, interviews, or skills!`,
     },
   ]);
   const [input, setInput] = useState("");

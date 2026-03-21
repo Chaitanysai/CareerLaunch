@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { Sparkles, Github, Twitter, Linkedin } from "lucide-react";
 
 const Footer = () => (
@@ -85,7 +85,7 @@ const Footer = () => (
 
       <div className="border-t border-border/60 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} RoleMatch. All rights reserved.
+          © {new Date().getFullYear()} CareerLaunch. All rights reserved.
         </p>
         <p className="text-xs text-muted-foreground">
           Built with ❤️ by Chaitanysai

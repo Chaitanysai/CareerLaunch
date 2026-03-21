@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+﻿import { createContext, useContext, useState, ReactNode } from "react";
 import { IndianCity, INDIAN_CITIES, DEFAULT_CITY } from "@/lib/cities";
 
 interface CityContextType {
@@ -15,7 +15,7 @@ export const useCity = () => useContext(CityContext);
 
 export const CityProvider = ({ children }: { children: ReactNode }) => {
   const [city, setCity] = useState<IndianCity>(() => {
-    const saved = localStorage.getItem("rolematch_city");
+    const saved = localStorage.getItem("CareerLaunch_city");
     if (saved) {
       const found = INDIAN_CITIES.find((c) => c.id === saved);
       if (found) return found;
@@ -25,7 +25,7 @@ export const CityProvider = ({ children }: { children: ReactNode }) => {
 
   const handleSetCity = (newCity: IndianCity) => {
     setCity(newCity);
-    localStorage.setItem("rolematch_city", newCity.id);
+    localStorage.setItem("CareerLaunch_city", newCity.id);
   };
 
   return (

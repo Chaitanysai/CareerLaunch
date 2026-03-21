@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCity } from "@/hooks/useCity";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -88,7 +88,7 @@ const Dashboard = () => {
               style={{ fontFamily: "var(--font-headline)", fontSize: "clamp(1.6rem, 3vw, 2.5rem)" }}>
               {greeting}, <span className="capitalize">{firstName}</span>.<br />
               <span style={{ color: "var(--secondary-fixed, #6ffbbe)" }}>Architect your career</span>{" "}
-              with RoleMatch AI.
+              with CareerLaunch AI.
             </h1>
 
             <p className="text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.70)" }}>

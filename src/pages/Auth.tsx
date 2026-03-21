@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   signInWithEmailAndPassword,
@@ -186,7 +186,7 @@ const AuthPage = () => {
           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
-          <span className="font-heading font-bold text-2xl text-white">RoleMatch</span>
+          <span className="font-heading font-bold text-2xl text-white">CareerLaunch</span>
         </Link>
 
         <div className="z-10">
@@ -212,7 +212,7 @@ const AuthPage = () => {
         </div>
 
         <p className="text-white/40 text-sm z-10">
-          © {new Date().getFullYear()} RoleMatch
+          © {new Date().getFullYear()} CareerLaunch
         </p>
       </div>
 
@@ -250,7 +250,7 @@ const AuthPage = () => {
                   Welcome back
                 </h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Sign in to your RoleMatch account
+                  Sign in to your CareerLaunch account
                 </p>
               </div>
 

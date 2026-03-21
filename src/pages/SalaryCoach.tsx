@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useCity } from "@/hooks/useCity";
 import { callAI, safeParseJSON } from "@/services/ai";
@@ -193,7 +193,7 @@ All salary in LPA. verdict: "underpaid" | "fair" | "above-market".`;
                 <div className="grid grid-cols-3 gap-4">
                   {[
                     { label: "Minimum", value: result.marketMin, sub: "10th Percentile", primary: false },
-                    { label: "Median Market", value: result.marketMedian, sub: "RoleMatch Standard", primary: true },
+                    { label: "Median Market", value: result.marketMedian, sub: "CareerLaunch Standard", primary: true },
                     { label: "Top Talent", value: result.marketMax, sub: "90th Percentile", primary: false },
                   ].map(({ label, value, sub, primary }) => (
                     <div key={label} className={`p-6 rounded-3xl text-center ${primary ? "scale-105" : ""}`}

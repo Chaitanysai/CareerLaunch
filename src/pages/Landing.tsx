@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCity } from "@/hooks/useCity";
@@ -94,7 +94,7 @@ const AuthModal = ({ open, onClose, defaultTab = "login" }: { open: boolean; onC
               <span className="material-symbols-outlined text-white mat-fill" style={{ fontSize: 16 }}>psychology</span>
             </div>
             <span className="font-bold text-base tracking-tight" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
-              RoleMatch
+              CareerLaunch
             </span>
           </div>
 
@@ -202,9 +202,9 @@ const FEATURES = [
 ];
 
 const TESTIMONIALS = [
-  { name: "Arjun Reddy",  role: "Senior SDE @ Unicorn",    city: "Hyderabad", text: "RoleMatch helped me pivot from a service firm to a top product startup in Gachibowli with a 60% hike. The skill gap analysis was a game changer.", init: "A" },
+  { name: "Arjun Reddy",  role: "Senior SDE @ Unicorn",    city: "Hyderabad", text: "CareerLaunch helped me pivot from a service firm to a top product startup in Gachibowli with a 60% hike. The skill gap analysis was a game changer.", init: "A" },
   { name: "Priya Sharma", role: "Product Lead @ Fintech",  city: "Bengaluru", text: "The editorial feel of the platform makes job hunting feel less like a chore and more like a curated experience for your career.", init: "P" },
-  { name: "Karthik V.",   role: "Backend Architect",       city: "Chennai",   text: "Finding roles in Hyderabad that match global standards was hard until I tried RoleMatch. Highly recommend for serious tech professionals.", init: "K" },
+  { name: "Karthik V.",   role: "Backend Architect",       city: "Chennai",   text: "Finding roles in Hyderabad that match global standards was hard until I tried CareerLaunch. Highly recommend for serious tech professionals.", init: "K" },
 ];
 
 const Landing = () => {
@@ -246,7 +246,7 @@ const Landing = () => {
         style={{ background: "rgba(247,249,251,0.85)", backdropFilter: "blur(32px)", boxShadow: "0 4px 24px var(--primary)08" }}>
         <div className="flex items-center gap-8">
           <span className="text-2xl font-bold tracking-tighter" style={{ fontFamily: "var(--font-headline)", color: "var(--primary)" }}>
-            RoleMatch
+            CareerLaunch
           </span>
           <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition-colors"
             style={{ background: "var(--surface-container)", color: "var(--on-surface-variant)" }}>
@@ -464,7 +464,7 @@ const Landing = () => {
           <div className="md:col-span-1">
             <span className="text-2xl font-bold tracking-tighter mb-6 block"
               style={{ fontFamily: "var(--font-headline)", color: "var(--primary)" }}>
-              RoleMatch
+              CareerLaunch
             </span>
             <p className="text-sm leading-relaxed mb-8" style={{ color: "var(--on-surface-variant)" }}>
               Elevating the career search experience for India's premium tech talent.
@@ -492,7 +492,7 @@ const Landing = () => {
         </div>
         <div className="max-w-7xl mx-auto pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm"
           style={{ borderTop: "1px solid var(--outline-variant)", color: "var(--on-surface-variant)" }}>
-          <p>© {new Date().getFullYear()} RoleMatch India. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} CareerLaunch India. All rights reserved.</p>
           <div className="flex gap-8">
             <span>Made in Hyderabad with ❤️</span>
           </div>
