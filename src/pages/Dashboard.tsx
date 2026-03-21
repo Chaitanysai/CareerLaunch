@@ -5,29 +5,32 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 
 const FEATURE_CARDS = [
   {
-    icon: "psychology", iconBg: "rgba(0,0,0,0.12)", iconColor: "rgba(255,255,255,0.9)",
+    icon: "psychology", iconBg: "rgba(255,255,255,0.15)", iconColor: "rgba(255,255,255,0.9)",
     title: "Analyze Resume",
     desc: "Deep-dive into your expertise with our neural semantic processor.",
     cta: "Start Analysis", href: "/match",
+    ctaColor: "var(--secondary-fixed, #6ffbbe)",
   },
   {
     icon: "travel_explore", iconBg: "#dbeafe", iconColor: "#1d4ed8",
     title: "Browse Jobs",
     desc: "Explore high-impact roles curated specifically for your profile DNA.",
     cta: "Explore Openings", href: "/jobs",
+    ctaColor: "#1d4ed8",
   },
   {
     icon: "record_voice_over", iconBg: "#fef3c7", iconColor: "#d97706",
     title: "Interview Prep",
     desc: "Simulate real-world scenarios with our specialized AI interviewers.",
     cta: "Start Practice", href: "/interview",
+    ctaColor: "#d97706",
   },
 ];
 
 const SKILLS = [
-  { label: "React / Frontend", pct: 94, color: "primary" },
-  { label: "System Design",    pct: 82, color: "primary" },
-  { label: "Cloud / DevOps",   pct: 65, color: "amber"   },
+  { label: "React / Frontend", pct: 94, isAmber: false },
+  { label: "System Design",    pct: 82, isAmber: false },
+  { label: "Cloud / DevOps",   pct: 65, isAmber: true  },
 ];
 
 const JOBS = [
@@ -40,7 +43,18 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { city } = useCity();
-  const firstName = user?.name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
+
+  // ── Always use first name only, never show email ──
+  const firstName = (() => {
+    if (!user) return "there";
+    const name = user.name || "";
+    // If name looks like an email, use prefix before @
+    if (name.includes("@")) {
+      return name.split("@")[0].replace(/[._-]/g, " ").split(" ")[0];
+    }
+    return name.split(" ")[0] || "there";
+  })();
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
@@ -48,53 +62,58 @@ const Dashboard = () => {
     <DashboardLayout title="Dashboard">
       <div className="p-8 min-h-screen" style={{ background: "var(--surface-container-low)" }}>
 
-        {/* ── Hero Card — uses CSS vars so theme changes work ── */}
+        {/* ── Hero — gradient from CSS vars, updates with theme ── */}
         <section
           className="rounded-[2rem] p-10 flex flex-col lg:flex-row items-center justify-between relative mb-10 shadow-xl overflow-hidden fade-up"
           style={{
-            /* Uses CSS var so it reacts to theme changes */
-            background: `linear-gradient(135deg, var(--hero-from, #001f10) 0%, var(--hero-mid, #004433) 55%, var(--hero-to, #006947) 100%)`,
+            background: "linear-gradient(135deg, var(--hero-from, #001f10) 0%, var(--hero-mid, #004433) 55%, var(--hero-to, #006947) 100%)",
             minHeight: 240,
           }}
         >
-          {/* Radial glow overlay */}
+          {/* Glow overlay */}
           <div className="absolute top-0 right-0 w-2/5 h-3/5 pointer-events-none"
             style={{ background: "radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 70%)" }} />
 
           <div className="relative z-10 max-w-2xl">
-            {/* ── FIX 3: "AI INTELLIGENCE" label — white on dark, clearly visible ── */}
-            <div className="inline-flex items-center px-3 py-1 rounded-full mb-5 border"
-              style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.25)" }}>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-white">
+            {/* AI Intelligence label */}
+            <div className="inline-flex items-center px-3 py-1 rounded-full mb-5"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
+              <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "white" }}>
                 AI Intelligence
               </span>
             </div>
 
-            {/* ── FIX 1: greeting shows name, not email ── */}
-            <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-4"
-              style={{ fontFamily: "var(--font-headline)" }}>
+            {/* Greeting — ONLY first name, never email */}
+            <h1 className="font-bold text-white leading-tight mb-4"
+              style={{ fontFamily: "var(--font-headline)", fontSize: "clamp(1.6rem, 3vw, 2.5rem)" }}>
               {greeting}, <span className="capitalize">{firstName}</span>.<br />
               <span style={{ color: "var(--secondary-fixed, #6ffbbe)" }}>Architect your career</span>{" "}
-              <span className="text-white">with RoleMatch AI.</span>
+              with RoleMatch AI.
             </h1>
 
-            <p className="text-base leading-relaxed mb-8"
-              style={{ color: "rgba(255,255,255,0.70)" }}>
+            <p className="text-base leading-relaxed mb-8" style={{ color: "rgba(255,255,255,0.70)" }}>
               Let our AI matching engine analyze your unique skill DNA to find high-impact roles in{" "}
               <strong style={{ color: "rgba(255,255,255,0.95)" }}>{city.name}</strong> that others miss.
             </p>
 
             <div className="flex flex-wrap items-center gap-4">
-              <button
-                onClick={() => navigate("/match")}
+              <button onClick={() => navigate("/match")}
                 className="px-6 py-3 font-bold rounded-xl transition-all hover:opacity-90 active:scale-95"
-                style={{ background: "rgba(255,255,255,0.18)", color: "var(--secondary-fixed, #6ffbbe)", border: "1px solid rgba(255,255,255,0.30)", fontFamily: "var(--font-headline)" }}>
+                style={{
+                  background: "rgba(255,255,255,0.14)",
+                  color: "var(--secondary-fixed, #6ffbbe)",
+                  border: "1px solid rgba(255,255,255,0.28)",
+                  fontFamily: "var(--font-headline)",
+                }}>
                 Analyze My Resume ✦
               </button>
-              <button
-                onClick={() => navigate("/career-roadmap")}
+              <button onClick={() => navigate("/career-roadmap")}
                 className="px-6 py-3 font-bold rounded-xl transition-all hover:opacity-90"
-                style={{ background: "rgba(255,255,255,0.95)", color: "var(--primary)", fontFamily: "var(--font-headline)" }}>
+                style={{
+                  background: "rgba(255,255,255,0.95)",
+                  color: "var(--primary)",
+                  fontFamily: "var(--font-headline)",
+                }}>
                 View Career Path
               </button>
             </div>
@@ -102,22 +121,26 @@ const Dashboard = () => {
 
           {/* Resume scan card */}
           <div className="relative z-10 mt-8 lg:mt-0 shrink-0">
-            <div className="p-6 rounded-3xl w-64 shadow-2xl"
+            <div className="p-6 rounded-3xl w-60 shadow-2xl"
               style={{
                 background: "rgba(255,255,255,0.10)",
                 backdropFilter: "blur(16px)",
                 border: "1px solid rgba(255,255,255,0.18)",
               }}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                   style={{ background: "var(--secondary-fixed, #6ffbbe)" }}>
-                  <span className="material-symbols-outlined mat-fill" style={{ color: "var(--primary)", fontSize: 22 }}>
+                  <span className="material-symbols-outlined mat-fill" style={{ color: "var(--primary)", fontSize: 20 }}>
                     description
                   </span>
                 </div>
                 <div>
-                  <p className="font-bold text-white" style={{ fontFamily: "var(--font-headline)" }}>Resume Scanned</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>Status</p>
+                  <p className="font-bold text-white text-sm" style={{ fontFamily: "var(--font-headline)" }}>
+                    Resume Scanned
+                  </p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    Status
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">
@@ -135,11 +158,11 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* ── Feature cards ── */}
+        {/* Feature cards */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 fade-up fade-up-1">
-          {FEATURE_CARDS.map(({ icon, iconBg, iconColor, title, desc, cta, href }) => (
+          {FEATURE_CARDS.map(({ icon, iconBg, iconColor, title, desc, cta, ctaColor, href }) => (
             <div key={title}
-              className="card-stitch p-8 bento-card-hover group cursor-pointer"
+              className="card-stitch p-8 group cursor-pointer bento-card-hover"
               onClick={() => navigate(href)}>
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6"
                 style={{ background: iconBg }}>
@@ -151,9 +174,9 @@ const Dashboard = () => {
                 {title}
               </h3>
               <p className="text-sm mb-6 leading-relaxed" style={{ color: "var(--on-surface-variant)" }}>{desc}</p>
-              <div className="flex items-center gap-2 text-sm font-bold" style={{ color: "var(--primary)" }}>
+              <div className="flex items-center gap-2 text-sm font-bold" style={{ color: ctaColor }}>
                 <span>{cta}</span>
-                <span className="material-symbols-outlined arrow-slide transition-transform" style={{ fontSize: 18, color: "var(--primary)" }}>
+                <span className="material-symbols-outlined arrow-slide transition-transform" style={{ fontSize: 18, color: ctaColor }}>
                   arrow_forward
                 </span>
               </div>
@@ -161,7 +184,7 @@ const Dashboard = () => {
           ))}
         </section>
 
-        {/* ── Bottom: Skill Breakdown + Recent Recommendations ── */}
+        {/* Bottom grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 fade-up fade-up-2">
 
           {/* Skill Breakdown */}
@@ -180,67 +203,55 @@ const Dashboard = () => {
                 Updated 1h ago
               </span>
             </div>
-
             <div className="space-y-8 mb-10">
-              {SKILLS.map(({ label, pct, color }) => (
+              {SKILLS.map(({ label, pct, isAmber }) => (
                 <div key={label} className="space-y-3">
                   <div className="flex justify-between font-bold text-sm" style={{ fontFamily: "var(--font-headline)" }}>
                     <span style={{ color: "var(--on-surface)" }}>{label}</span>
-                    <span style={{ color: color === "primary" ? "var(--primary)" : "#d97706" }}>{pct}%</span>
+                    <span style={{ color: isAmber ? "#d97706" : "var(--primary)" }}>{pct}%</span>
                   </div>
                   <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ background: "white" }}>
                     <div style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      borderRadius: 999,
-                      background: color === "primary" ? "var(--primary)" : "#f59e0b",
+                      width: `${pct}%`, height: "100%", borderRadius: 999,
+                      background: isAmber ? "#f59e0b" : "var(--primary)",
                       transition: "width 0.8s ease",
                     }} />
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Growth tip */}
-            <div className="p-5 rounded-2xl flex gap-4 items-start" style={{ background: "rgba(0,0,0,0.04)" }}>
+            <div className="p-5 rounded-2xl flex gap-4 items-start"
+              style={{ background: "rgba(0,0,0,0.04)" }}>
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                 style={{ background: "var(--primary)" }}>
-                <span className="material-symbols-outlined text-white" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>
-                  lightbulb
-                </span>
+                <span className="material-symbols-outlined text-white mat-fill" style={{ fontSize: 18 }}>lightbulb</span>
               </div>
               <p className="text-sm italic leading-relaxed" style={{ color: "var(--on-surface)" }}>
-                Focusing on Kubernetes certifications could increase your match rate for Senior roles in {city.name} by 24%.
+                Focusing on Kubernetes certifications could increase your match rate by 24% in {city.name}.
               </p>
             </div>
           </div>
 
           {/* Recent Recommendations */}
           <div className="lg:col-span-7">
-            <h2 className="text-2xl font-bold mb-8 px-1" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
+            <h2 className="text-2xl font-bold mb-8" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
               Recent Recommendations
             </h2>
             <div className="space-y-4 mb-8">
               {JOBS.map(({ co, color, title, meta, match }) => (
                 <div key={title}
-                  className="card-stitch p-5 flex items-center justify-between cursor-pointer transition-all"
+                  className="card-stitch p-5 flex items-center justify-between cursor-pointer"
                   onClick={() => navigate("/jobs")}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(25,28,30,0.12)"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = ""}>
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
                       style={{ background: `${color}18`, border: `1px solid ${color}25` }}>
-                      <span className="text-xl font-black" style={{ color, fontFamily: "var(--font-headline)" }}>
-                        {co[0]}
-                      </span>
+                      <span className="text-xl font-black" style={{ color, fontFamily: "var(--font-headline)" }}>{co[0]}</span>
                     </div>
                     <div>
-                      <h4 className="font-bold" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>
-                        {title}
-                      </h4>
-                      <p className="text-sm mt-0.5" style={{ color: "var(--on-surface-variant)" }}>
-                        {co} • {meta}
-                      </p>
+                      <h4 className="font-bold" style={{ fontFamily: "var(--font-headline)", color: "var(--on-surface)" }}>{title}</h4>
+                      <p className="text-sm mt-0.5" style={{ color: "var(--on-surface-variant)" }}>{co} • {meta}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 shrink-0">
@@ -258,9 +269,8 @@ const Dashboard = () => {
                 </div>
               ))}
             </div>
-
             <button onClick={() => navigate("/jobs")}
-              className="flex items-center gap-2 font-bold transition-all group"
+              className="flex items-center gap-2 font-bold"
               style={{ color: "var(--primary)", fontFamily: "var(--font-headline)" }}>
               <span>View all job recommendations</span>
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
