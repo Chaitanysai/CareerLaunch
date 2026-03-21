@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Bot, User, Sparkles, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Loader2, Send, Bot, User, Sparkles, AlertCircle } from "lucide-react";
 import { streamChatWithAdvisor, ChatMessage } from "@/services/groq";
 import { useCity } from "@/hooks/useCity";
 import { cn } from "@/lib/utils";
@@ -19,8 +17,8 @@ const QUICK_PROMPTS = [
   "Best resume format for India?",
 ];
 
-// Strip markdown bold (**text**) from AI responses
-const cleanText = (text: string) => text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1");
+const cleanText = (text: string) =>
+  text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/\*(.*?)\*/g, "$1");
 
 const ChatWindow = ({ skills = [], jobTitle = "", compact = false }: ChatWindowProps) => {
   const { city } = useCity();
@@ -51,107 +49,107 @@ const ChatWindow = ({ skills = [], jobTitle = "", compact = false }: ChatWindowP
     setMessages(history);
     setLoading(true);
 
-    // Add empty assistant slot for streaming
     const assistantIdx = history.length;
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
     await streamChatWithAdvisor(
-      history,
-      city.name,
-      skills,
-      jobTitle,
-      // onChunk
+      history, city.name, skills, jobTitle,
       (chunk) => {
-        setMessages((prev) => {
+        setMessages(prev => {
           const updated = [...prev];
-          updated[assistantIdx] = {
-            ...updated[assistantIdx],
-            content: updated[assistantIdx].content + chunk,
-          };
+          updated[assistantIdx] = { ...updated[assistantIdx], content: updated[assistantIdx].content + chunk };
           return updated;
         });
       },
-      // onDone
       () => setLoading(false),
-      // onError
       (errMsg) => {
         setApiError(errMsg);
-        setMessages((prev) => {
+        setMessages(prev => {
           const updated = [...prev];
-          updated[assistantIdx] = {
-            role: "assistant",
-            content: "Sorry, I couldn't connect right now. Please check your API key and try again.",
-          };
+          updated[assistantIdx] = { role: "assistant", content: "Sorry, I couldn't connect right now. Please try again." };
           return updated;
         });
         setLoading(false);
       }
     );
-
     inputRef.current?.focus();
   };
 
   return (
     <div className={cn(
-      "flex flex-col bg-card border border-border/50 rounded-xl overflow-hidden",
-      compact ? "h-[480px]" : "h-[calc(100vh-8rem)]"
-    )}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 shrink-0"
-        style={{ background: "var(--sidebar-bg)" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "var(--accent-500)" }}>
-          <Sparkles className="h-4 w-4 text-white" />
+      "flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl border",
+      compact ? "h-[520px]" : "h-[calc(100vh-8rem)]"
+    )}
+      style={{ borderColor: "var(--outline-variant)" }}>
+
+      {/* ── Header — FIX 3: dark bg with clearly readable white text ── */}
+      <div className="flex items-center gap-3 px-4 py-3.5 shrink-0"
+        style={{ background: "var(--primary)" }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: "rgba(255,255,255,0.18)" }}>
+          <Sparkles className="h-4.5 w-4.5 text-white" style={{ width: 18, height: 18 }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-heading font-semibold text-sm text-white">AI Career Advisor</p>
-          <p className="text-xs truncate" style={{ color: "var(--sidebar-text)", opacity: 0.7 }}>
+          {/* FIX: explicit white color, not relying on inheritance */}
+          <p className="font-bold text-sm leading-tight" style={{ fontFamily: "var(--font-headline)", color: "#ffffff" }}>
+            AI Career Advisor
+          </p>
+          <p className="text-xs leading-tight" style={{ color: "rgba(255,255,255,0.70)" }}>
             Specialized for {city.name} market
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs text-emerald-400 font-medium">Online</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+          <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>Online</span>
         </div>
       </div>
 
-      {/* API error banner */}
+      {/* API error */}
       {apiError && (
-        <div className="flex items-start gap-2 px-4 py-2.5 bg-destructive/10 border-b border-destructive/20 text-xs text-destructive shrink-0">
+        <div className="flex items-start gap-2 px-4 py-2.5 text-xs shrink-0"
+          style={{ background: "#fee2e2", color: "#991b1b", borderBottom: "1px solid #fecaca" }}>
           <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>{apiError}</span>
         </div>
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{ background: "var(--surface-container-low)" }}>
         {messages.map((msg, i) => (
           <div key={i} className={cn("flex gap-2.5", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-            {/* Avatar */}
             <div className={cn(
               "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-              msg.role === "assistant"
-                ? "border border-accent/20"
-                : "bg-primary text-primary-foreground"
+              msg.role === "assistant" ? "" : ""
             )}
-              style={msg.role === "assistant" ? { background: "rgba(0,200,150,0.1)" } : {}}>
+              style={{
+                background: msg.role === "assistant" ? "var(--surface-container)" : "var(--primary)",
+              }}>
               {msg.role === "assistant"
-                ? <Bot className="h-3.5 w-3.5 text-accent" />
-                : <User className="h-3.5 w-3.5" />}
+                ? <Bot className="h-3.5 w-3.5" style={{ color: "var(--primary)" }} />
+                : <User className="h-3.5 w-3.5 text-white" />}
             </div>
 
-            {/* Bubble */}
             <div className={cn(
-              "max-w-[82%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
+              "max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
               msg.role === "assistant"
-                ? "bg-muted text-foreground rounded-tl-sm"
-                : "bg-primary text-primary-foreground rounded-tr-sm"
-            )}>
+                ? "rounded-tl-sm"
+                : "rounded-tr-sm"
+            )}
+              style={{
+                background: msg.role === "assistant"
+                  ? "var(--surface-container-lowest)"
+                  : "var(--primary)",
+                color: msg.role === "assistant"
+                  ? "var(--on-surface)"
+                  : "#ffffff",
+                boxShadow: "0 1px 3px rgba(25,28,30,0.08)",
+              }}>
               {msg.content === "" && loading && i === messages.length - 1 ? (
                 <div className="flex items-center gap-1 py-1">
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground typing-dot" />
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground typing-dot" />
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground typing-dot" />
+                  <div className="w-2 h-2 rounded-full typing-dot" style={{ background: "var(--outline)" }} />
+                  <div className="w-2 h-2 rounded-full typing-dot" style={{ background: "var(--outline)" }} />
+                  <div className="w-2 h-2 rounded-full typing-dot" style={{ background: "var(--outline)" }} />
                 </div>
               ) : (
                 <span className="whitespace-pre-wrap">{cleanText(msg.content)}</span>
@@ -162,12 +160,26 @@ const ChatWindow = ({ skills = [], jobTitle = "", compact = false }: ChatWindowP
         <div ref={bottomRef} />
       </div>
 
-      {/* Quick prompts — only on first message */}
+      {/* Quick prompts */}
       {messages.length === 1 && (
-        <div className="px-4 pb-2 flex flex-wrap gap-1.5 shrink-0">
-          {QUICK_PROMPTS.map((p) => (
+        <div className="px-4 pb-2 flex flex-wrap gap-1.5 shrink-0"
+          style={{ background: "var(--surface-container-low)" }}>
+          {QUICK_PROMPTS.map(p => (
             <button key={p} onClick={() => sendMessage(p)}
-              className="text-xs px-3 py-1.5 rounded-full border border-border hover:border-accent/50 hover:bg-accent/5 text-muted-foreground hover:text-accent transition-all">
+              className="text-xs px-3 py-1.5 rounded-full border transition-all"
+              style={{
+                background: "var(--surface-container-lowest)",
+                borderColor: "var(--outline-variant)",
+                color: "var(--on-surface-variant)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--primary)";
+                (e.currentTarget as HTMLElement).style.color = "var(--primary)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--outline-variant)";
+                (e.currentTarget as HTMLElement).style.color = "var(--on-surface-variant)";
+              }}>
               {p}
             </button>
           ))}
@@ -175,23 +187,38 @@ const ChatWindow = ({ skills = [], jobTitle = "", compact = false }: ChatWindowP
       )}
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-border/50 shrink-0">
+      <div className="px-4 py-3 shrink-0 border-t"
+        style={{ background: "white", borderColor: "var(--outline-variant)" }}>
         <div className="flex gap-2">
-          <Input
+          <input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
             placeholder={`Ask about ${city.name} job market...`}
-            className="flex-1 text-sm"
             disabled={loading}
+            className="flex-1 text-sm px-4 py-2.5 rounded-xl outline-none border transition-all"
+            style={{
+              background: "var(--surface-container-low)",
+              borderColor: "var(--outline-variant)",
+              color: "var(--on-surface)",
+              fontFamily: "var(--font-body)",
+            }}
+            onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--primary)"}
+            onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--outline-variant)"}
           />
-          <Button size="icon" onClick={() => sendMessage()}
-            disabled={!input.trim() || loading} className="shrink-0">
+          <button
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || loading}
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all"
+            style={{
+              background: input.trim() && !loading ? "var(--primary)" : "var(--surface-container-high)",
+              color: input.trim() && !loading ? "white" : "var(--outline)",
+            }}>
             {loading
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : <Send className="h-4 w-4" />}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
