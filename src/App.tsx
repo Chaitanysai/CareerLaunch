@@ -7,99 +7,96 @@ import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { CityProvider } from "@/hooks/useCity";
 import { ThemeProvider } from "@/hooks/useTheme";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import ChatBubble from "@/components/advisor/ChatBubble";
 
-// Core pages
+// All pages — imported directly, NO DashPage wrapper for pages that have their own DashboardLayout
 import Landing from "./pages/Landing";
 import AuthPage from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import JobBoard from "./pages/JobBoard";
 import SavedJobs from "./pages/SavedJobs";
 import Profile from "./pages/Profile";
-import SkillGapPage from "./pages/SkillGap";
-import AdvisorPage from "./pages/Advisor";
 import NotFound from "./pages/NotFound";
 
-// Tools
+// These pages ALREADY contain <DashboardLayout> inside them — do NOT wrap again
+import ResumeMatcher from "./pages/Index";
+import SkillGapPage from "./pages/SkillGap";
+import AdvisorPage from "./pages/Advisor";
 import InterviewPrep from "./pages/InterviewPrep";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import CoverLetter from "./pages/CoverLetter";
 import SalaryCoach from "./pages/SalaryCoach";
-
-// Research
 import CompanyResearch from "./pages/CompanyResearch";
 import CareerRoadmap from "./pages/CareerRoadmap";
 import LinkedInOptimizer from "./pages/LinkedInOptimizer";
 import JobTracker from "./pages/JobTracker";
 
-// Resume Matcher (Index)
-import ResumeMatcher from "./pages/Index";
-
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
+// ── Loading spinner ──────────────────────────────────────────────
 const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--surface)" }}>
+  <div className="min-h-screen flex items-center justify-center"
+    style={{ background: "var(--surface)" }}>
     <div className="flex flex-col items-center gap-3">
       <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
         style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
-      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>Loading RoleMatch...</p>
+      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+        Loading RoleMatch...
+      </p>
     </div>
   </div>
 );
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+// ── Auth guard — redirects to / if not logged in ─────────────────
+const Protected = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
-const DashPage = ({ children, title }: { children: React.ReactNode; title: string }) => (
-  <ProtectedRoute>
-    <DashboardLayout title={title}>{children}</DashboardLayout>
-  </ProtectedRoute>
-);
-
+// ── Routes ───────────────────────────────────────────────────────
 const AppRoutes = () => {
   const { user } = useAuth();
+
   return (
     <>
       <Routes>
-        {/* Public */}
-        <Route path="/" element={<Landing />} />
+        {/* ── Public ── */}
+        <Route path="/"     element={<Landing />} />
         <Route path="/auth" element={<AuthPage />} />
 
-        {/* Main */}
-        <Route path="/dashboard" element={<DashPage title="Dashboard"><Dashboard /></DashPage>} />
-        <Route path="/match" element={<DashPage title="Resume Matcher"><ResumeMatcher /></DashPage>} />
-        <Route path="/jobs" element={<DashPage title="Job Board"><JobBoard /></DashPage>} />
-        <Route path="/saved" element={<DashPage title="Saved Jobs"><SavedJobs /></DashPage>} />
-        <Route path="/profile" element={<DashPage title="My Profile"><Profile /></DashPage>} />
-        <Route path="/skillgap" element={<SkillGapPage />} />
-        <Route path="/advisor" element={<AdvisorPage />} />
-
-        {/* Tools */}
-        <Route path="/interview" element={<ProtectedRoute><InterviewPrep /></ProtectedRoute>} />
-        <Route path="/resume-builder" element={<ProtectedRoute><ResumeBuilder /></ProtectedRoute>} />
-        <Route path="/cover-letter" element={<ProtectedRoute><CoverLetter /></ProtectedRoute>} />
-        <Route path="/salary-coach" element={<ProtectedRoute><SalaryCoach /></ProtectedRoute>} />
-
-        {/* Research */}
-        <Route path="/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
-        <Route path="/career-roadmap" element={<ProtectedRoute><CareerRoadmap /></ProtectedRoute>} />
-        <Route path="/linkedin" element={<ProtectedRoute><LinkedInOptimizer /></ProtectedRoute>} />
-        <Route path="/tracker" element={<ProtectedRoute><JobTracker /></ProtectedRoute>} />
+        {/* ── Protected — pages that render their OWN DashboardLayout ── */}
+        {/* Each of these pages calls <DashboardLayout> internally.       */}
+        {/* Do NOT add another wrapper here or you get double topbar.     */}
+        <Route path="/dashboard"       element={<Protected><Dashboard /></Protected>} />
+        <Route path="/match"           element={<Protected><ResumeMatcher /></Protected>} />
+        <Route path="/jobs"            element={<Protected><JobBoard /></Protected>} />
+        <Route path="/saved"           element={<Protected><SavedJobs /></Protected>} />
+        <Route path="/profile"         element={<Protected><Profile /></Protected>} />
+        <Route path="/skillgap"        element={<Protected><SkillGapPage /></Protected>} />
+        <Route path="/advisor"         element={<Protected><AdvisorPage /></Protected>} />
+        <Route path="/interview"       element={<Protected><InterviewPrep /></Protected>} />
+        <Route path="/resume-builder"  element={<Protected><ResumeBuilder /></Protected>} />
+        <Route path="/cover-letter"    element={<Protected><CoverLetter /></Protected>} />
+        <Route path="/salary-coach"    element={<Protected><SalaryCoach /></Protected>} />
+        <Route path="/company-research" element={<Protected><CompanyResearch /></Protected>} />
+        <Route path="/career-roadmap"  element={<Protected><CareerRoadmap /></Protected>} />
+        <Route path="/linkedin"        element={<Protected><LinkedInOptimizer /></Protected>} />
+        <Route path="/tracker"         element={<Protected><JobTracker /></Protected>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      {/* Floating chat bubble — shown on all protected pages */}
       {user && <ChatBubble />}
     </>
   );
 };
 
+// ── Root ─────────────────────────────────────────────────────────
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <NextThemeProvider attribute="class" defaultTheme="light" enableSystem>
