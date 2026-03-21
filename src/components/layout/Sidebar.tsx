@@ -62,10 +62,10 @@ const Sidebar = () => {
         boxShadow: "1px 0 0 rgba(255,255,255,0.8)",
       }}
     >
-      {/* ── Brand — full logo with icon + wordmark ── */}
+      {/* ── Brand logo ── */}
       <div className="px-2 mb-8">
         <Link to="/dashboard">
-          <CareerLaunchLogo variant="full" size={38} />
+          <CareerLaunchLogo variant="full" size={40} />
         </Link>
       </div>
 
@@ -92,37 +92,14 @@ const Sidebar = () => {
         </div>
       </nav>
 
-      {/* Bottom */}
+      {/* ── Bottom: user row only, NO upgrade card ── */}
       <div className="mt-4 px-3 pt-4" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-        {/* Upgrade card — gradient follows theme */}
-        <div className="p-4 rounded-2xl mb-3 relative overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%)`,
-            boxShadow: `0 4px 16px var(--primary)35`,
-          }}>
-          <div className="absolute -right-3 -bottom-3 w-14 h-14 rounded-full opacity-15"
-            style={{ background: "white" }} />
-          <p className="text-xs font-bold mb-1 text-white relative z-10">Upgrade to Pro</p>
-          <p className="text-[10px] mb-3 relative z-10" style={{ color: "rgba(255,255,255,0.72)" }}>
-            Unlimited AI mock interviews & insights.
-          </p>
-          <button
-            className="w-full py-2 rounded-xl text-xs font-bold transition-all relative z-10"
-            style={{ background: "rgba(255,255,255,0.95)", color: "var(--primary)" }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "white"}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.95)"}
-          >
-            Upgrade Now ✦
-          </button>
-        </div>
-
-        {/* User row */}
         <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl"
           style={{ background: "rgba(0,0,0,0.03)" }}>
-          <Avatar className="h-7 w-7 shrink-0">
+          <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={user?.avatar} />
             <AvatarFallback className="text-white font-black"
-              style={{ background: "var(--primary)", fontFamily: "var(--font-headline)", fontSize: 11 }}>
+              style={{ background: "var(--primary)", fontFamily: "var(--font-headline)", fontSize: 12 }}>
               {user?.name?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -135,12 +112,15 @@ const Sidebar = () => {
               {user?.email}
             </p>
           </div>
-          <button onClick={signOut} title="Sign out"
-            className="p-1.5 rounded-lg shrink-0 sidebar-nav-item transition-colors"
+          <button
+            onClick={signOut}
+            title="Sign out"
+            className="p-1.5 rounded-lg shrink-0 transition-colors"
             style={{ color: "var(--outline)" }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "var(--error)"}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--outline)"}>
-            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>logout</span>
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "var(--outline)"}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>logout</span>
           </button>
         </div>
       </div>
