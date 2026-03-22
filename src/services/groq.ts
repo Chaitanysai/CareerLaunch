@@ -1,5 +1,7 @@
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+// src/services/groq.ts
+// All calls go through /api/ai (Vercel serverless) — keys never exposed to browser
+
+const API_PROXY = "/api/ai";
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -7,7 +9,7 @@ export interface ChatMessage {
 }
 
 const SYSTEM_PROMPT = (city: string, skills: string[], jobTitle: string) => `
-You are RoleMatch AI — an expert career advisor specializing in the Indian job market, specifically for ${city}.
+You are CareerLaunch AI — an expert career advisor specializing in the Indian job market, specifically for ${city}.
 
 CANDIDATE PROFILE:
 - Target role: ${jobTitle || "Software Engineer"}
@@ -17,7 +19,7 @@ CANDIDATE PROFILE:
 You help with:
 1. Career guidance specific to Indian tech ecosystem
 2. Salary negotiation tips (always in LPA - Lakhs Per Annum)
-3. Interview preparation for Indian companies (TCS, Infosys, Wipro, Flipkart, Swiggy, Razorpay etc.)
+3. Interview preparation for Indian companies (TCS, Infosys, Flipkart, Swiggy, Razorpay etc.)
 4. Skills roadmap for ${city} job market
 5. Resume and LinkedIn optimization for Indian recruiters
 6. Company culture insights for Indian startups vs MNCs
@@ -25,46 +27,46 @@ You help with:
 Be concise, practical, and India-specific. Use LPA for salaries. Reference real Indian platforms (Naukri, LinkedIn, AngelList India, Instahyre). Keep responses under 200 words unless asked for detailed plans. Use plain text only — no markdown bold or asterisks.
 `.trim();
 
-// ── Non-streaming (used as fallback) ────────────────────────────
+// ── Non-streaming ─────────────────────────────────────────────────
 export async function chatWithAdvisor(
   messages: ChatMessage[],
   city: string,
   skills: string[],
   jobTitle: string
 ): Promise<string> {
-  if (!GROQ_API_KEY) {
-    throw new Error("Groq API key not configured. Add VITE_GROQ_API_KEY to your .env file.");
-  }
-
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch(API_PROXY, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${GROQ_API_KEY}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT(city, skills, jobTitle) },
-        ...messages,
-      ],
-      temperature: 0.7,
-      max_tokens: 512,
-      stream: false,
+      provider: "groq",
+      payload: {
+        body: {
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT(city, skills, jobTitle) },
+            ...messages,
+          ],
+          temperature: 0.7,
+          max_tokens: 512,
+          stream: false,
+        },
+      },
     }),
   });
 
   if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    const msg = errData?.error?.message || `Groq error: ${res.status}`;
-    throw new Error(msg);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || err?.error || `Groq proxy error: ${res.status}`);
   }
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
 }
 
-// ── Streaming ────────────────────────────────────────────────────
+// ── Streaming ─────────────────────────────────────────────────────
+// NOTE: Vercel serverless functions don't support true streaming.
+// We use non-streaming and simulate it by calling onChunk once with full response.
+// For real streaming, you'd need Vercel Edge Functions (different setup).
 export async function streamChatWithAdvisor(
   messages: ChatMessage[],
   city: string,
@@ -74,83 +76,26 @@ export async function streamChatWithAdvisor(
   onDone: () => void,
   onError: (err: string) => void
 ): Promise<void> {
-  if (!GROQ_API_KEY) {
-    onError("Groq API key not configured. Add VITE_GROQ_API_KEY to your .env and Vercel env vars.");
-    onDone();
-    return;
-  }
-
   try {
-    const res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT(city, skills, jobTitle) },
-          ...messages,
-        ],
-        temperature: 0.7,
-        max_tokens: 512,
-        stream: true,
-      }),
-    });
+    const response = await chatWithAdvisor(messages, city, skills, jobTitle);
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const msg = errData?.error?.message || `Groq API error ${res.status}`;
-      // If streaming fails, try non-streaming fallback
-      if (res.status === 400 || res.status === 422) {
-        const fallback = await chatWithAdvisor(messages, city, skills, jobTitle);
-        onChunk(fallback);
-        onDone();
-        return;
-      }
-      throw new Error(msg);
-    }
-
-    const reader = res.body?.getReader();
-    const decoder = new TextDecoder();
-    if (!reader) { onDone(); return; }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-
-      for (const line of lines) {
-        const json = line.replace("data: ", "").trim();
-        if (json === "[DONE]") { onDone(); return; }
-        try {
-          const parsed = JSON.parse(json);
-          const text = parsed.choices?.[0]?.delta?.content;
-          if (text) onChunk(text);
-        } catch {
-          // skip malformed chunks
-        }
-      }
+    // Simulate streaming by sending words progressively
+    const words = response.split(" ");
+    for (let i = 0; i < words.length; i++) {
+      const chunk = (i === 0 ? "" : " ") + words[i];
+      onChunk(chunk);
+      // Small delay between words for streaming feel
+      await new Promise(r => setTimeout(r, 18));
     }
     onDone();
   } catch (err: any) {
-    console.error("Groq streaming error:", err);
-    // Try non-streaming fallback
-    try {
-      const fallback = await chatWithAdvisor(messages, city, skills, jobTitle);
-      onChunk(fallback);
-      onDone();
-    } catch (fallbackErr: any) {
-      onError(fallbackErr.message || "Could not connect to AI advisor. Please try again.");
-      onDone();
-    }
+    console.error("Groq proxy error:", err);
+    onError(err.message || "Could not connect to AI advisor. Please try again.");
+    onDone();
   }
 }
 
-// ── Career tips ──────────────────────────────────────────────────
+// ── Career tips ───────────────────────────────────────────────────
 export async function getCareerTips(city: string, jobTitle: string): Promise<string[]> {
   try {
     const result = await chatWithAdvisor(
@@ -169,7 +114,7 @@ export async function getCareerTips(city: string, jobTitle: string): Promise<str
     return [
       `Keep your Naukri profile updated for ${city} jobs`,
       "Prepare for system design rounds for senior roles",
-      "Network actively on LinkedIn with ${city} recruiters",
+      `Network actively on LinkedIn with ${city} recruiters`,
       "Practice DSA on LeetCode for product company interviews",
     ];
   }

@@ -1,6 +1,8 @@
-const RAPIDAPI_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
+// src/services/jsearch.ts
+// Calls /api/ai proxy — RAPIDAPI_KEY stays server-side
+
+const API_PROXY = "/api/ai";
 const RAPIDAPI_HOST = "jsearch27.p.rapidapi.com";
-const BASE_URL = `https://${RAPIDAPI_HOST}`;
 
 export interface JSearchJob {
   job_id: string;
@@ -35,10 +37,8 @@ export interface SearchFilters {
   page?: number;
 }
 
-// ── Search Jobs ──────────────────────────────────────────────────
+// ── Search Jobs via proxy ─────────────────────────────────────────
 export async function searchJobs(filters: SearchFilters): Promise<JSearchJob[]> {
-  if (!RAPIDAPI_KEY) throw new Error("RapidAPI key not configured");
-
   const params = new URLSearchParams({
     query: `${filters.query} in ${filters.location} India`,
     page: String(filters.page || 1),
@@ -48,72 +48,37 @@ export async function searchJobs(filters: SearchFilters): Promise<JSearchJob[]> 
     ...(filters.employmentType && { employment_types: filters.employmentType }),
   });
 
-  const res = await fetch(`${BASE_URL}/search?${params}`, {
-    headers: {
-      "x-rapidapi-key": RAPIDAPI_KEY,
-      "x-rapidapi-host": RAPIDAPI_HOST,
-      "Content-Type": "application/json",
-    },
+  const res = await fetch(API_PROXY, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: "rapidapi",
+      payload: {
+        host: RAPIDAPI_HOST,
+        path: `/search?${params.toString()}`,
+      },
+    }),
   });
 
   if (!res.ok) {
     if (res.status === 429) throw new Error("API quota exceeded. Showing AI-generated jobs instead.");
-    throw new Error(`JSearch error: ${res.status}`);
+    throw new Error(`JSearch proxy error: ${res.status}`);
   }
 
   const data = await res.json();
   return (data.data || []) as JSearchJob[];
 }
 
-// ── Estimated Salary ─────────────────────────────────────────────
-export async function getEstimatedSalary(jobTitle: string, location: string): Promise<{
-  min: number; max: number; median: number; currency: string;
-} | null> {
-  if (!RAPIDAPI_KEY) return null;
-
-  try {
-    const params = new URLSearchParams({
-      job_title: jobTitle,
-      location: `${location}, India`,
-      radius: "100",
-    });
-
-    const res = await fetch(`${BASE_URL}/estimated-salary?${params}`, {
-      headers: {
-        "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": RAPIDAPI_HOST,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    const d = data.data?.[0];
-    if (!d) return null;
-
-    return {
-      min: Math.round(d.min_salary || 0),
-      max: Math.round(d.max_salary || 0),
-      median: Math.round(d.median_salary || 0),
-      currency: d.salary_currency || "INR",
-    };
-  } catch {
-    return null;
-  }
-}
-
-// ── Normalise JSearch job → our unified format ───────────────────
+// ── Normalise JSearch job → unified format ────────────────────────
 export function normaliseJSearchJob(job: JSearchJob, matchScore?: number) {
   const postedDate = job.job_posted_at_datetime_utc
     ? formatPostedDate(job.job_posted_at_datetime_utc)
     : "Recently";
 
-  // Convert USD salary to LPA if needed
   let salaryMin = 0;
   let salaryMax = 0;
   if (job.job_min_salary && job.job_max_salary) {
     if (job.job_salary_currency === "USD") {
-      // rough USD → INR LPA conversion
       salaryMin = Math.round((job.job_min_salary * 83) / 100000);
       salaryMax = Math.round((job.job_max_salary * 83) / 100000);
     } else {
@@ -169,5 +134,5 @@ function extractSkills(description: string): string[] {
   const known = ["React", "Node.js", "Python", "Java", "TypeScript", "JavaScript",
     "AWS", "Docker", "Kubernetes", "SQL", "MongoDB", "Angular", "Vue", "Go",
     "Flutter", "Swift", "Kotlin", "Django", "Spring", "PostgreSQL", "Redis"];
-  return known.filter((s) => description.toLowerCase().includes(s.toLowerCase())).slice(0, 5);
+  return known.filter(s => description.toLowerCase().includes(s.toLowerCase())).slice(0, 5);
 }
