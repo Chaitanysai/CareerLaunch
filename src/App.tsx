@@ -29,8 +29,9 @@ import CompanyResearch from "./pages/CompanyResearch";
 import CareerRoadmap from "./pages/CareerRoadmap";
 import LinkedInOptimizer from "./pages/LinkedInOptimizer";
 import JobTracker from "./pages/JobTracker";
+import SmartJobSearch from "./pages/SmartJobSearch";
 
-// ── Env validation at startup ── fixes #11
+// ── Env validation at startup ──────────────────────────────────
 const REQUIRED_ENV = [
   "VITE_FIREBASE_API_KEY",
   "VITE_FIREBASE_AUTH_DOMAIN",
@@ -38,32 +39,37 @@ const REQUIRED_ENV = [
 ];
 const missingEnv = REQUIRED_ENV.filter(k => !import.meta.env[k]);
 if (missingEnv.length > 0) {
-  console.error("⚠️ CareerLaunch: Missing environment variables:", missingEnv.join(", "));
+  console.error("⚠️ CareerLaunch: Missing env vars:", missingEnv.join(", "));
 }
 
+// ── Query client ───────────────────────────────────────────────
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 60 * 5, retry: 1 } },
 });
 
+// ── Loading spinner ────────────────────────────────────────────
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center"
     style={{ background: "var(--surface)" }}>
     <div className="flex flex-col items-center gap-3">
       <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
         style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
-      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>Loading CareerLaunch...</p>
+      <p className="text-sm" style={{ color: "var(--on-surface-variant)" }}>
+        Loading CareerLaunch...
+      </p>
     </div>
   </div>
 );
 
+// ── Auth guard ─────────────────────────────────────────────────
 const Protected = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <Navigate to="/" replace />;
-  // Wrap each protected page in its own boundary so one crash doesn't kill the whole app
   return <ErrorBoundary>{children}</ErrorBoundary>;
 };
 
+// ── Routes ─────────────────────────────────────────────────────
 const AppRoutes = () => {
   const { user } = useAuth();
 
@@ -71,13 +77,14 @@ const AppRoutes = () => {
     <>
       <Routes>
         {/* Public */}
-        <Route path="/"     element={<Landing />} />
+        <Route path="/"    element={<Landing />} />
         <Route path="/auth" element={<AuthPage />} />
 
-        {/* Protected — each page owns its DashboardLayout */}
+        {/* Protected — each page owns its own DashboardLayout */}
         <Route path="/dashboard"        element={<Protected><Dashboard /></Protected>} />
         <Route path="/match"            element={<Protected><ResumeMatcher /></Protected>} />
         <Route path="/jobs"             element={<Protected><JobBoard /></Protected>} />
+        <Route path="/smart-jobs"       element={<Protected><SmartJobSearch /></Protected>} />
         <Route path="/saved"            element={<Protected><SavedJobs /></Protected>} />
         <Route path="/profile"          element={<Protected><Profile /></Protected>} />
         <Route path="/skillgap"         element={<Protected><SkillGapPage /></Protected>} />
@@ -93,13 +100,15 @@ const AppRoutes = () => {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      {/* Floating AI chat bubble on all protected pages */}
       {user && <ChatBubble />}
     </>
   );
 };
 
+// ── Root ───────────────────────────────────────────────────────
 const App = () => (
-  // Top-level ErrorBoundary — catches anything that escapes page-level boundaries
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <NextThemeProvider attribute="class" defaultTheme="light" enableSystem>
